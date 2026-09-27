@@ -449,8 +449,12 @@ function validateCenters(centers, quad, n) {
 }
 
 // ==================== 导出 ====================
+//
+// 本项目模块的导出约定是【文件最后一个表达式】（如 imageFinder.js 结尾的 `api;`、
+// configManager.js 结尾的 `configManager;`），而不是 module.exports。
+// 为同时兼容 node（离线跑 geometry.test.js）与 AutoGOD，两种都写。
 
-module.exports = {
+var geometry = {
     // 核心
     computeHomography: computeHomography,
     transformPoint: transformPoint,
@@ -471,3 +475,11 @@ module.exports = {
     quadArea: quadArea,
     pointInPoly: pointInPoly
 };
+
+// 兼容 node（离线跑 geometry.test.js 用）
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = geometry;
+}
+
+// AutoGOD / EasyClick 的导出约定：文件最后一个表达式就是模块的导出值
+geometry;
