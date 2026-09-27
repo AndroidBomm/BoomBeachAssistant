@@ -1,0 +1,275 @@
+﻿<ui>
+    <statusbar />
+    <linear dir="v" h="max" w="max">
+        <!--顶部应用栏-->
+        <appbar-layout w="max">
+            <appbar h="auto" id="appbar" title="海岛小助手" w="max" >
+                    <!-- 右侧日志按钮 -->
+                    <menu id="logbtn" icon="ic_article_outline" text="日志" iconTint="#49454f"/>
+                </appbar>
+                <!--标签栏组件-->
+                    <tab id="tabs"  padding="0,2,0,2" w="max" h="34" >
+                        <item text="首页" icon=""/>
+                        <item text="账号信息" icon=""/>
+                        <item text="查雕设置" icon=""/>
+                        <item text="声纳设置" icon=""/>
+                        <item text="更多" icon=""/>
+                    </tab>
+                
+            </appbar-layout>
+
+            <!--可滚动内容容器-->
+            <pager h="max" id="viewpager" w="max">
+                <!--首页-->
+                <fragment h="max" w="max">
+                    <linear dir="v" h="max" w="max">
+                        <!--滚动内容区域-->
+                        <frame h="0" weight="1" w="max">
+                            <!--滚动容器-->
+                            <scroll h="max" w="max">
+                                <!--垂直布局容器-->
+                                <linear dir="v" h="auto" padding="16" w="max">
+                                    <!-- 权限状态指示点（卡片包裹） -->
+                                    <card h="auto" margin_bottom="8" radius="10" style="elevate" tint="#FFFFFF" w="max">
+                                        <linear dir="h" gravity="center" padding="10,6" w="max">
+                                            <text id="autoServiceDot" textSize="10" text="●" textColor="#9E9E9E" />
+                                            <text id="autoService" textSize="12" text="无障碍 ✗" textColor="#333" margin_left="3" margin_right="72" clickable="true" />
+                                            <text id="rootPermissionDot" textSize="10" text="●" textColor="#9E9E9E" />
+                                            <text id="rootPermission" textSize="12" text="Root ✗" textColor="#333" margin_left="3" clickable="true" />
+                                        </linear>
+                                    </card>
+
+                                    <!--锁云功能卡片-->
+                                    <card h="auto" margin_bottom="8" radius="8" style="elevate"
+                                        tint="#FFFFFF" w="max">
+                                        <linear dir="v" h="auto" padding="16" w="max">
+                                            <text margin_bottom="8" textSize="16" text="锁云" typeface="bold" />
+
+                                            <linear dir="h" gravity="center_v" margin_bottom="8">
+                                                <text margin_right="8" textSize="14" text="当前状态："  w="100" />
+                                                <text id="lockCloudDot" textSize="10" text="●" textColor="#9E9E9E" margin_right="4" />
+                                                <text id="lockCloudStatus" margin_right="8" textSize="14"
+                                                    text="国际服: 未锁云" w="150" />
+                                            </linear>
+
+                                            <linear dir="h" gravity="center_v" margin_bottom="8">
+                                                <text margin_right="8" textSize="14" text="版本：" w="100" />
+                                                <radio-group id="serverType" dir="h">
+                                                    <radio text="国服" textSize="13" />
+                                                    <radio text="国际服" textSize="13" />
+                                                </radio-group>
+                                            </linear>
+
+                                            <linear dir="h" gravity="center_horizontal" margin_top="8" w="max">
+                                                <button id="btnUnlockCloud" text="卸载锁云" w="120" h="42"
+                                                    textSize="14" margin_right="16" bg="#FF5722" textColor="#FFFFFF" radius="4" />
+                                                <button id="btnLockCloud" text="执行锁云" w="120" h="42"
+                                                    textSize="14" bg="#4CAF50" textColor="#FFFFFF" radius="4" />
+                                            </linear>
+                                        </linear>
+                                    </card>
+
+                                    <!-- 运行功能选择 -->
+                                    <card h="auto" radius="8" style="elevate" tint="#FFFFFF" w="max">
+                                        <linear dir="v" h="auto" padding="16" w="max">
+                                            <text margin_bottom="8" textSize="16" text="运行功能" typeface="bold" />
+                                            <radio-group id="runFunction" dir="h" gravity="center" w="max">
+                                                <radio id="radioChaDiaoXiang" text="  查雕像  " textSize="16" checked="true" />
+                                                <radio id="radioAutoSonar" text="  自动声纳  " textSize="16" margin_left="40" />
+                                            </radio-group>
+                                        </linear>
+                                    </card>
+
+                                </linear>
+                            </scroll>
+                        </frame>
+
+                        <!-- 启动/关闭按钮 - 固定在底部 -->
+                        <card h="auto" radius="0" tint="#FFFFFF" w="max" padding="0">
+                            <linear dir="h" padding="8" w="max" gravity="center">
+                                <button id="btnStop" text="关闭" w="0" weight="1" h="56"
+                                    textSize="18" bg="#E53935" textColor="#FFFFFF" radius="8" margin_right="6" />
+                                <button id="btnStart" text="启动" w="0" weight="1" h="56"
+                                    textSize="18" bg="#4CAF50" textColor="#FFFFFF" radius="8" />
+                            </linear>
+                        </card>
+                    </linear>
+                </fragment>
+
+                <!--账号信息页面-->
+                <fragment h="max" w="max">
+                    <frame h="max" w="max">
+                        <scroll h="max" w="max">
+                            <linear dir="v" h="auto" padding="16" w="max">
+
+                                <!-- 当前服务器（居中，在card外部） -->
+                                <text id="accountServerIndicator" textSize="16" text="国服"
+                                    typeface="bold" gravity="center_horizontal" w="max" margin_bottom="8" />
+
+                                <!-- 开始上号 -->
+                                <card radius="8" style="outline" tint="#FFFFFF" w="max" padding="8,6" margin_bottom="8">
+                                    <linear dir="h" gravity="center" w="max">
+                                        <text textSize="13" text="开始上号" textColor="#333" margin_right="4" />
+                                        <edit id="batchCount" h="28" w="56" textSize="12" gravity="center"
+                                            text="1" inputType="number" padding="2" bg="#F5F5F5"
+                                            radius="4" />
+                                    </linear>
+                                </card>
+
+                                <!-- 存档操作按钮 -->
+                                <card radius="10" style="elevate" tint="#FFFFFF" w="max" padding="0" margin_bottom="10">
+                                    <linear dir="v" padding="6" w="max">
+                                        <linear dir="h" gravity="center" w="max" margin_bottom="4">
+                                            <button id="findAccountArchive" text="生成存档" w="0" 
+                                                weight="1" h="34" textSize="11" margin_right="4"
+                                                bg="#4CAF50" textColor="#FFFFFF" radius="6" />
+                                            <button id="btnExportArchive" text="导出存档" w="0" 
+                                                weight="1" h="34" textSize="11" margin_right="4"
+                                                bg="#1976D2" textColor="#FFFFFF" radius="6" />
+                                            <button id="btnImportArchive" text="读取存档" w="0" 
+                                                weight="1" h="34" textSize="11"
+                                                bg="#00897B" textColor="#FFFFFF" radius="6" />
+                                        </linear>
+                                        <linear dir="h" gravity="center" w="max">
+                                            <button id="btnClearList" text="清空列表" w="0" 
+                                                weight="1" h="34" textSize="11" margin_right="4"
+                                                bg="#E53935" textColor="#FFFFFF" radius="6" />
+                                            <button id="btnEmailLogin" text="邮箱登录" w="0" 
+                                                weight="1" h="34" textSize="11" margin_right="4"
+                                                bg="#FF9800" textColor="#FFFFFF" radius="6" />
+                                            <button id="btnArchiveHelp" text="存档说明" w="0" 
+                                                weight="1" h="34" textSize="11"
+                                                bg="#5C6BC0" textColor="#FFFFFF" radius="6" />
+                                        </linear>
+                                    </linear>
+                                </card>
+
+                                <!-- 账号列表（无外层 card，避免双底线） -->
+                                <text margin_bottom="8" textSize="16" text="账号列表"
+                                    typeface="bold" gravity="center_horizontal" w="max" />
+                                <ls h="auto" w="max" id="AccountList" padding_bottom="0"
+                                    padding_left="0" padding_right="0">
+                                    <layout w="max">
+                                    <card id="cardRoot" foreground="?selectableItemBackground"
+                                        margin="0,0,0,1" radius="4"
+                                        tint="#FFFFFF" w="max">
+                                        <linear dir="h" gravity="center_vertical" padding="2,0" w="max">
+                                            <text id="accountIndex" maxLines="1" textSize="13"
+                                                textColor="#333333" margin_right="2" />
+                                            <text id="accountTitle" maxLines="1" textSize="13"
+                                                textColor="#FF5722" w="0" weight="1" margin_right="2" />
+                                            <button id="moveUp" text="" w="16" h="16" textSize="7" margin_right="1" />
+                                            <button id="moveDown" text="" w="16" h="16" textSize="7" margin_right="2" />
+                                            <button id="selectAccount" text="" w="26" h="18" textSize="9" />
+                                            <button id="deleteAccount" text="" w="26" h="18" textSize="9" margin_left="2" />
+                                            <button id="loadArchive" text="" w="26" h="18" textSize="9" margin_left="2" />
+                                        </linear>
+                                    </card>
+                                    </layout>
+                                </ls>
+                            </linear>
+                        </scroll>
+                    </frame>
+                </fragment>
+
+                <!--查雕设置页面（占位）-->
+                <fragment h="max" w="max">
+                    <frame h="max" w="max">
+                        <scroll h="max" w="max">
+                            <linear dir="v" h="auto" padding="16" w="max">
+                                <card h="auto" radius="8" style="elevate" tint="#FFFFFF" w="max">
+                                    <linear dir="v" padding="16" w="max" gravity="center">
+                                        <text textSize="16" text="查雕设置" typeface="bold" gravity="center" w="max" />
+                                        <text margin_top="8" textSize="13" text="功能开发中，敬请期待" textColor="#999" />
+                                    </linear>
+                                </card>
+                            </linear>
+                        </scroll>
+                    </frame>
+                </fragment>
+
+                <!--声纳设置页面（占位）-->
+                <fragment h="max" w="max">
+                    <frame h="max" w="max">
+                        <scroll h="max" w="max">
+                            <linear dir="v" h="auto" padding="16" w="max">
+                                <card h="auto" radius="8" style="elevate" tint="#FFFFFF" w="max">
+                                    <linear dir="v" padding="16" w="max" gravity="center">
+                                        <text textSize="16" text="声纳设置" typeface="bold" gravity="center" w="max" />
+                                        <text margin_top="8" textSize="13" text="功能开发中，敬请期待" textColor="#999" />
+                                    </linear>
+                                </card>
+                            </linear>
+                        </scroll>
+                    </frame>
+                </fragment>
+
+                <!--更多页面-->
+                <fragment h="max" w="max">
+                    <frame h="max" w="max">
+                        <scroll h="max" w="max">
+                            <linear dir="v" h="auto" padding="16" w="max">
+                                <!--设备信息卡片-->
+                                <card h="auto" margin_bottom="16" radius="4" style="elevate"
+                                    tint="#FFFFFF" w="max">
+                                    <linear dir="v" padding="16" w="max">
+                                        <!-- 标题 -->
+                                        <text margin_bottom="8" textSize="16" text="设备信息" 
+                                               textStyle="bold" />
+                                        
+                                        <!-- 屏幕分辨率 -->
+                                        <linear dir="h" gravity="center_vertical" margin_bottom="8">
+                                            <text margin_right="8" textSize="14" text="屏幕分辨率：" 
+                                                  w="100" />
+                                            <text id="screenResolution" textSize="14"
+                                                  text="获取中" w="max" />
+                                        </linear>
+                                        
+                                        <!-- DPI -->
+                                        <linear dir="h" gravity="center_vertical" margin_bottom="8">
+                                            <text margin_right="8" textSize="14" text="DPI：" 
+                                                  w="100" />
+                                            <text id="screenDensity" textSize="14" 
+                                                  text="获取中" w="max" />
+                                        </linear>
+                                        
+                                        <!-- 屏幕密度 -->
+                                        <linear dir="h" gravity="center_vertical" margin_bottom="8">
+                                            <text margin_right="8" textSize="14" text="屏幕密度：" 
+                                                  w="100" />
+                                            <text id="screenScale" textSize="14" 
+                                                  text="获取中" w="max" />
+                                        </linear>
+                                        
+                                        <!-- 设备型号 -->
+                                        <linear dir="h" gravity="center_vertical" margin_bottom="8">
+                                            <text margin_right="8" textSize="14" text="设备型号：" 
+                                                  w="100" />
+                                            <text id="deviceModel" textSize="14"
+                                                  text="获取中" w="max" />
+                                        </linear>
+                                        
+                                        <!-- 系统版本 -->
+                                        <linear dir="h" gravity="center_vertical" margin_bottom="8">
+                                            <text margin_right="8" textSize="14" text="系统版本：" 
+                                                  w="100" />
+                                            <text id="androidVersion" textSize="14"
+                                                  text="获取中" w="max" />
+                                        </linear>
+                                        
+                                        <!-- 内存信息 -->
+                                        <linear dir="h" gravity="center_vertical">
+                                            <text margin_right="8" textSize="14" text="内存信息：" 
+                                                  w="100" />
+                                            <text id="memoryInfo" textSize="14"
+                                                  text="获取中" w="max" />
+                                        </linear>
+                                    </linear>
+                                </card>
+                           </linear>
+                        </scroll>
+                    </frame>
+                </fragment>
+            </pager>
+        </linear>
+</ui>
