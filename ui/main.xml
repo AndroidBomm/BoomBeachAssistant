@@ -81,38 +81,42 @@
                                         注意：<linear> 没有运行时改背景色的方法，所以每一行用 <card>（有 setTint）
                                     -->
                                     <card h="auto" radius="8" style="elevate" tint="#FFFFFF" w="max">
-                                        <linear dir="v" h="auto" padding="16" w="max">
-                                            <text margin_bottom="10" textSize="16" text="运行功能" typeface="bold" />
+                                        <linear dir="v" h="auto" padding="14" w="max">
+                                            <text margin_bottom="8" textSize="15" text="运行功能" typeface="bold" />
 
                                             <!-- 第1行：查雕像 -->
                                             <card clickable="true" h="auto" id="rowChaDiao" radius="8"
                                                 style="outline" w="max">
-                                                <linear dir="h" gravity="center_vertical" padding="12,10" w="max">
-                                                    <text color="#00897B" gravity="center" h="34" id="barChaDiao" text="█" textSize="17" w="10" />
-                                                                                                        <img h="22" id="icoChaDiao" src="ic_search_fill" tint="#888888" w="22" />
-                                                    <linear dir="v" margin_left="10" w="0" weight="1">
-                                                        <text id="ttlChaDiao" text="查雕像" textSize="15" />
-                                                        <text color="#999999" margin_top="2" textSize="11"
+                                                <linear dir="h" gravity="center_vertical" padding="10,6" w="max">
+                                                    <text color="#00897B" gravity="center" h="28" id="barChaDiao"
+                                                        text="█" textSize="15" w="8" />
+                                                    <img h="20" id="icoChaDiao" margin_left="6" src="ic_search_fill"
+                                                        tint="#888888" w="20" />
+                                                    <linear dir="v" margin_left="8" w="0" weight="1">
+                                                        <text id="ttlChaDiao" text="查雕像" textSize="14" />
+                                                        <text color="#999999" margin_top="1" textSize="10"
                                                             text="检查岛屿上所有雕像的升级状态" />
                                                     </linear>
-                                                    <text color="#00897B" id="curChaDiao" text="当前" textSize="12" />
+                                                    <text color="#00897B" id="curChaDiao" text="当前" textSize="11" />
                                                 </linear>
                                             </card>
 
-                                            <hr margin_bottom="6" margin_top="6" />
+                                            <hr margin_bottom="4" margin_top="4" />
 
                                             <!-- 第2行：自动声纳 -->
                                             <card clickable="true" h="auto" id="rowSonar" radius="8"
                                                 style="outline" w="max">
-                                                <linear dir="h" gravity="center_vertical" padding="12,10" w="max">
-                                                    <text color="#FFFFFF" gravity="center" h="34" id="barSonar" text="█" textSize="17" w="10" />
-                                                                                                        <img h="22" id="icoSonar" src="ic_near_me_fill" tint="#888888" w="22" />
-                                                    <linear dir="v" margin_left="10" w="0" weight="1">
-                                                        <text id="ttlSonar" text="自动声纳" textSize="15" />
-                                                        <text color="#999999" margin_top="2" textSize="11"
+                                                <linear dir="h" gravity="center_vertical" padding="10,6" w="max">
+                                                    <text color="#FFFFFF" gravity="center" h="28" id="barSonar"
+                                                        text="█" textSize="15" w="8" />
+                                                    <img h="20" id="icoSonar" margin_left="6" src="ic_near_me_fill"
+                                                        tint="#888888" w="20" />
+                                                    <linear dir="v" margin_left="8" w="0" weight="1">
+                                                        <text id="ttlSonar" text="自动声纳" textSize="14" />
+                                                        <text color="#999999" margin_top="1" textSize="10"
                                                             text="声呐潜艇活动自动打格子" />
                                                     </linear>
-                                                    <text color="#00897B" id="curSonar" text="" textSize="12" />
+                                                    <text color="#00897B" id="curSonar" text="" textSize="11" />
                                                 </linear>
                                             </card>
                                         </linear>
