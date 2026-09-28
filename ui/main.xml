@@ -69,26 +69,52 @@
                                         </linear>
                                     </card>
 
-                                    <!-- 运行功能选择 -->
+                                    <!-- 运行功能选择（上下两行，设置项风格）-->
+                                    <!--
+                                        属性出处：
+                                          ui/layout-card.md   card 的 radius/style/tint/clickable
+                                          ui/layout-linear.md linear 的 dir/gravity/padding
+                                          ui/other-gravity.md gravity="center_vertical" 合法
+                                          ui/img.md           img 的 src/tint
+                                          ui/text.md          text 的 text/textSize/color
+                                          ui/hr.md            hr 的 margin
+                                        注意：<linear> 没有运行时改背景色的方法，所以每一行用 <card>（有 setTint）
+                                    -->
                                     <card h="auto" radius="8" style="elevate" tint="#FFFFFF" w="max">
                                         <linear dir="v" h="auto" padding="16" w="max">
                                             <text margin_bottom="10" textSize="16" text="运行功能" typeface="bold" />
-                                            <!--
-                                                分段按钮（MaterialButtonToggleGroup）
-                                                属性出处：ui/button-button-group.md + 官方示例
-                                                examples/$ui - 交互界面/03.button-group-按钮组/ui.xml
-                                                注意：button-group 没有 color/radius 属性，样式靠 button 的 style 走
-                                            -->
-                                            <button-group id="runFunction" dir="h" gravity="center" w="max"
-                                                singleSelect="true" selectRequire="true">
-                                                <button id="runBtnChaDiao" style="outline" text="查雕像"
-                                                    textSize="14" weight="1" />
-                                                <button id="runBtnSonar" style="outline" text="自动声纳"
-                                                    textSize="14" weight="1" />
-                                            </button-group>
-                                            <!-- 随选择变化的说明文字 -->
-                                            <text id="runFunctionHint" margin_top="8" textSize="12"
-                                                color="#888888" text="检查岛屿上所有雕像的升级状态" />
+
+                                            <!-- 第1行：查雕像 -->
+                                            <card clickable="true" h="auto" id="rowChaDiao" radius="8"
+                                                style="outline" w="max">
+                                                <linear dir="h" gravity="center_vertical" padding="12,10" w="max">
+                                                    <text color="#00897B" gravity="center" h="34" id="barChaDiao" text="█" textSize="17" w="10" />
+                                                                                                        <img h="22" id="icoChaDiao" src="ic_search_fill" tint="#888888" w="22" />
+                                                    <linear dir="v" margin_left="10" w="0" weight="1">
+                                                        <text id="ttlChaDiao" text="查雕像" textSize="15" />
+                                                        <text color="#999999" margin_top="2" textSize="11"
+                                                            text="检查岛屿上所有雕像的升级状态" />
+                                                    </linear>
+                                                    <text color="#00897B" id="curChaDiao" text="当前" textSize="12" />
+                                                </linear>
+                                            </card>
+
+                                            <hr margin_bottom="6" margin_top="6" />
+
+                                            <!-- 第2行：自动声纳 -->
+                                            <card clickable="true" h="auto" id="rowSonar" radius="8"
+                                                style="outline" w="max">
+                                                <linear dir="h" gravity="center_vertical" padding="12,10" w="max">
+                                                    <text color="#FFFFFF" gravity="center" h="34" id="barSonar" text="█" textSize="17" w="10" />
+                                                                                                        <img h="22" id="icoSonar" src="ic_near_me_fill" tint="#888888" w="22" />
+                                                    <linear dir="v" margin_left="10" w="0" weight="1">
+                                                        <text id="ttlSonar" text="自动声纳" textSize="15" />
+                                                        <text color="#999999" margin_top="2" textSize="11"
+                                                            text="声呐潜艇活动自动打格子" />
+                                                    </linear>
+                                                    <text color="#00897B" id="curSonar" text="" textSize="12" />
+                                                </linear>
+                                            </card>
                                         </linear>
                                     </card>
 

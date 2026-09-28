@@ -109,21 +109,53 @@ if (btnLockCloud) {
 let btnStart = ui.id("btnStart");
 let btnStop = ui.id("btnStop");
 
-// ===== 运行功能选择（分段按钮 button-group）=====
-// 注意：button-group 只有 onCheck(index)，没有 getCheckedText()，
-//       所以必须用变量记住当前选择。（见 ui/button-button-group.md）
+// ===== 运行功能选择（上下两行卡片）=====
+// 每一行是一块可点击的 <card>，选中态靠：
+//   行底色 setTint + 图标 setTint + 标题 setColor + 右侧「当前」文字
+// （<linear> 没有运行时改背景色的方法，所以行必须用 <card>；见 ui/layout-card.md）
 let _runFuncNames = ["查雕像", "自动声纳"];
 let _runFuncScripts = ["chaDiaoXiang", "autoSonar"];
-let _runFuncHints = [
-    "检查岛屿上所有雕像的升级状态",
-    "声呐潜艇活动自动打格子"
-];
 let _runFuncIndex = 0;
-// 初始化期间不写配置。
-// 原因：button-group 在布局时会自动触发一次 onCheck(0)，
-//       而恢复上次选择时调的 check(idx) 也会再触发一次 onCheck。
-//       若不加这道闸，每次启动都会先把配置写成"查雕像"再改回来。
+// 初始化期间不写配置（避免一启动就被默认值覆盖掉上次的选择）
 let _runFuncReady = false;
+
+// 界面元素（按 0=查雕像 1=自动声纳 排列）
+let _runRows = [ui.id("rowChaDiao"), ui.id("rowSonar")];
+let _runBars = [ui.id("barChaDiao"), ui.id("barSonar")];
+let _runIcos = [ui.id("icoChaDiao"), ui.id("icoSonar")];
+let _runTtls = [ui.id("ttlChaDiao"), ui.id("ttlSonar")];
+let _runCurs = [ui.id("curChaDiao"), ui.id("curSonar")];
+
+var RUN_COLOR_ON_BG = "#B2DFDB";   // 选中行底色
+var RUN_COLOR_OFF_BG = "#FFFFFF";  // 未选中行底色
+var RUN_COLOR_ON = "#00897B";      // 选中：色条/图标/标题/当前 的颜色
+var RUN_COLOR_OFF_ICO = "#888888"; // 未选中：图标颜色
+var RUN_COLOR_OFF_TTL = "#333333"; // 未选中：标题颜色
+
+/**
+ * 刷新两行的选中外观
+ * @param {number} index - 选中的下标
+ */
+function paintRunFunc(index) {
+    for (let i = 0; i < _runRows.length; i++) {
+        let on = (i === index);
+        // 行底色（card 的 setBg/setTint 实测在这套主题下不改变观感，
+        // 保留调用以防换个主题/版本有效；真正起作用的是下面那条色条）
+        try { if (_runRows[i]) { _runRows[i].setBg(on ? RUN_COLOR_ON_BG : RUN_COLOR_OFF_BG); } } catch (e) {}
+        try { if (_runRows[i]) { _runRows[i].setTint(on ? RUN_COLOR_ON_BG : RUN_COLOR_OFF_BG); } } catch (e) {}
+        // 左侧色条：setText 控制有无、setColor 控制颜色（都验证有效）
+        // 未选中时直接清空文字，避免白色方块在白底上留痕
+        try {
+            if (_runBars[i]) {
+                _runBars[i].setText(on ? "█" : "");
+                _runBars[i].setColor(RUN_COLOR_ON);
+            }
+        } catch (e) {}
+        try { if (_runIcos[i]) { _runIcos[i].setTint(on ? RUN_COLOR_ON : RUN_COLOR_OFF_ICO); } } catch (e) {}
+        try { if (_runTtls[i]) { _runTtls[i].setColor(on ? RUN_COLOR_ON : RUN_COLOR_OFF_TTL); } } catch (e) {}
+        try { if (_runCurs[i]) { _runCurs[i].setText(on ? "当前" : ""); } } catch (e) {}
+    }
+}
 
 /**
  * 应用运行功能选择
@@ -135,16 +167,7 @@ function applyRunFunc(index, save) {
         index = 0;
     }
     _runFuncIndex = index;
-
-    // 更新说明文字
-    try {
-        let hint = ui.id("runFunctionHint");
-        if (hint) {
-            hint.setText(_runFuncHints[index]);
-        }
-    } catch (e) {
-        $log.e("更新运行功能说明失败: " + e.message);
-    }
+    paintRunFunc(index);
 
     // 记住选择（仅在初始化完成后，且是用户真实切换时才写）
     if (save && _runFuncReady) {
@@ -156,46 +179,45 @@ function applyRunFunc(index, save) {
     }
 }
 
-let runFunction = ui.id("runFunction");
-if (runFunction) {
-    // 用户切换
-    runFunction.onCheck((index) => {
-        applyRunFunc(index, true);
-        // 初始化期间 button-group 会自己触发一次 onCheck，那种不算用户切换，不打日志
-        if (_runFuncReady) {
-            $log.d("运行功能切换为: " + _runFuncNames[_runFuncIndex]);
-        }
-    });
+// 绑定点击（整行可点）
+let _runRowFound = 0;
+for (let i = 0; i < _runRows.length; i++) {
+    if (!_runRows[i]) { continue; }
+    _runRowFound++;
+    (function (idx) {
+        _runRows[idx].click(() => {
+            if (_runFuncIndex === idx) { return; }   // 点当前项不重复写配置
+            applyRunFunc(idx, true);
+            $log.d("运行功能切换为: " + _runFuncNames[idx]);
+        });
+    })(i);
+}
 
-    // 恢复上次选择（照抄 serverType 的做法）
-    let saved = null;
-    try {
-        saved = configManager.getConfigItem("runFunction", null);
-    } catch (e) {
-        $log.e("读取运行功能配置失败: " + e.message);
+// 恢复上次选择（照抄 serverType 的做法）
+let _savedRun = null;
+try {
+    _savedRun = configManager.getConfigItem("runFunction", null);
+} catch (e) {
+    $log.e("读取运行功能配置失败: " + e.message);
+}
+if (_savedRun) {
+    let k = _runFuncNames.indexOf(_savedRun);
+    // 兼容旧值：只要含"自动声纳"就认成第 1 项
+    if (k < 0 && String(_savedRun).indexOf("自动声纳") >= 0) { k = 1; }
+    if (k >= 0) {
+        applyRunFunc(k, false);
+        $log.d("已恢复上次的运行功能选择: " + _runFuncNames[k]);
     }
-    if (saved) {
-        let idx = _runFuncNames.indexOf(saved);
-        // 兼容旧值：只要含"自动声纳"就认成第 1 项
-        if (idx < 0 && String(saved).indexOf("自动声纳") >= 0) {
-            idx = 1;
-        }
-        if (idx >= 0) {
-            try {
-                runFunction.check(idx);
-            } catch (e) {
-                $log.e("恢复运行功能选择失败: " + e.message);
-            }
-            applyRunFunc(idx, false);
-            $log.d("已恢复上次的运行功能选择: " + _runFuncNames[idx]);
-        }
-    }
+}
 
-    // 初始化完成。此后 onCheck 才会真正写配置（避免启动时被 onCheck(0) 覆盖）
-    _runFuncReady = true;
-    $log.d("运行功能初始化完成，当前选择: " + _runFuncNames[_runFuncIndex]);
+// 初始化完成。此后点击才会真正写配置
+applyRunFunc(_runFuncIndex, false);
+_runFuncReady = true;
+if (_runRowFound === 0) {
+    $log.e("运行功能的两行卡片都没找到，启动将默认走「查雕像」");
 } else {
-    $log.e("运行功能控件未找到，启动将默认走「查雕像」");
+    $log.d("运行功能初始化完成，当前选择: " + _runFuncNames[_runFuncIndex] +
+           "（找到 " + _runRowFound + " 行）");
 }
 
 if (btnStart) {
