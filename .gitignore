@@ -9,10 +9,18 @@ desktop.ini
 *.tmp
 *.log
 *~
-_ui_*.png
-_final_*.png
-_run_shot.png
 *.bak
+# 开发时随手截的临时图/临时数据（调试截图、验证图等），一律不进仓库
+_*.png
+_*.json
+
+# ---- 声纳素材（本地留着用，不进仓库）----
+# res/sonar_bg/ 是从 AndroidBomm/boombeach 的 save_points/imgs 下载的 13 张海域截图
+# （1280×720；海域 1~13 各一张；8.png 可覆盖海域 8~70，因为格子数从 8 号起固定为 10×10）
+# 15.8 MB 游戏截图 + 本仓库是公开的，所以不提交。需要时重新下载：
+#   https://github.com/AndroidBomm/boombeach  →  save_points/imgs/1.png ~ 13.png
+#   放到 res/sonar_bg/<海域号>.png 即可（模块按这个命名读取）
+res/sonar_bg/
 
 # ---- 构建输出 ----
 dist/

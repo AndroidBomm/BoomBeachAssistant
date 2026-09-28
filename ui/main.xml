@@ -90,7 +90,7 @@
                                                 <linear dir="h" gravity="center_vertical" padding="10,6" w="max">
                                                     <text color="#00897B" gravity="center" h="28" id="barChaDiao"
                                                         text="█" textSize="15" w="8" />
-                                                    <img h="20" id="icoChaDiao" margin_left="6" src="ic_search_fill"
+                                                    <img h="20" id="icoChaDiao" margin_left="6" src="ic_search_outline"
                                                         tint="#888888" w="20" />
                                                     <linear dir="v" margin_left="8" w="0" weight="1">
                                                         <text id="ttlChaDiao" text="查雕像" textSize="14" />
