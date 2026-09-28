@@ -109,13 +109,100 @@ if (btnLockCloud) {
 let btnStart = ui.id("btnStart");
 let btnStop = ui.id("btnStop");
 
+// ===== 运行功能选择（分段按钮 button-group）=====
+// 注意：button-group 只有 onCheck(index)，没有 getCheckedText()，
+//       所以必须用变量记住当前选择。（见 ui/button-button-group.md）
+let _runFuncNames = ["查雕像", "自动声纳"];
+let _runFuncScripts = ["chaDiaoXiang", "autoSonar"];
+let _runFuncHints = [
+    "检查岛屿上所有雕像的升级状态",
+    "声呐潜艇活动自动打格子"
+];
+let _runFuncIndex = 0;
+// 初始化期间不写配置。
+// 原因：button-group 在布局时会自动触发一次 onCheck(0)，
+//       而恢复上次选择时调的 check(idx) 也会再触发一次 onCheck。
+//       若不加这道闸，每次启动都会先把配置写成"查雕像"再改回来。
+let _runFuncReady = false;
+
+/**
+ * 应用运行功能选择
+ * @param {number} index - 0=查雕像 1=自动声纳
+ * @param {boolean} save - 是否写入配置
+ */
+function applyRunFunc(index, save) {
+    if (!(index >= 0) || index >= _runFuncNames.length) {
+        index = 0;
+    }
+    _runFuncIndex = index;
+
+    // 更新说明文字
+    try {
+        let hint = ui.id("runFunctionHint");
+        if (hint) {
+            hint.setText(_runFuncHints[index]);
+        }
+    } catch (e) {
+        $log.e("更新运行功能说明失败: " + e.message);
+    }
+
+    // 记住选择（仅在初始化完成后，且是用户真实切换时才写）
+    if (save && _runFuncReady) {
+        try {
+            configManager.updateConfig("runFunction", _runFuncNames[index]);
+        } catch (e) {
+            $log.e("保存运行功能选择失败: " + e.message);
+        }
+    }
+}
+
+let runFunction = ui.id("runFunction");
+if (runFunction) {
+    // 用户切换
+    runFunction.onCheck((index) => {
+        applyRunFunc(index, true);
+        // 初始化期间 button-group 会自己触发一次 onCheck，那种不算用户切换，不打日志
+        if (_runFuncReady) {
+            $log.d("运行功能切换为: " + _runFuncNames[_runFuncIndex]);
+        }
+    });
+
+    // 恢复上次选择（照抄 serverType 的做法）
+    let saved = null;
+    try {
+        saved = configManager.getConfigItem("runFunction", null);
+    } catch (e) {
+        $log.e("读取运行功能配置失败: " + e.message);
+    }
+    if (saved) {
+        let idx = _runFuncNames.indexOf(saved);
+        // 兼容旧值：只要含"自动声纳"就认成第 1 项
+        if (idx < 0 && String(saved).indexOf("自动声纳") >= 0) {
+            idx = 1;
+        }
+        if (idx >= 0) {
+            try {
+                runFunction.check(idx);
+            } catch (e) {
+                $log.e("恢复运行功能选择失败: " + e.message);
+            }
+            applyRunFunc(idx, false);
+            $log.d("已恢复上次的运行功能选择: " + _runFuncNames[idx]);
+        }
+    }
+
+    // 初始化完成。此后 onCheck 才会真正写配置（避免启动时被 onCheck(0) 覆盖）
+    _runFuncReady = true;
+    $log.d("运行功能初始化完成，当前选择: " + _runFuncNames[_runFuncIndex]);
+} else {
+    $log.e("运行功能控件未找到，启动将默认走「查雕像」");
+}
+
 if (btnStart) {
     btnStart.click(() => {
         try {
-            let runFunction = ui.id("runFunction");
-            let selected = runFunction ? runFunction.getCheckedText() : "查雕像";
-            let scriptName = (selected && selected.indexOf("自动声纳") >= 0) ? "autoSonar" : "chaDiaoXiang";
-            $log.i("启动脚本: " + scriptName);
+            let scriptName = _runFuncScripts[_runFuncIndex] || "chaDiaoXiang";
+            $log.i("启动脚本: " + scriptName + "（运行功能: " + _runFuncNames[_runFuncIndex] + "）");
             // 用脚本引擎启动，可被 $engine.stopAll() 停止
             $engine.run("./scripts/" + scriptName + ".js");
         } catch (e) {

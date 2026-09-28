@@ -1,4 +1,4 @@
-﻿<ui>
+<ui>
     <statusbar />
     <linear dir="v" h="max" w="max">
         <!--顶部应用栏-->
@@ -72,11 +72,23 @@
                                     <!-- 运行功能选择 -->
                                     <card h="auto" radius="8" style="elevate" tint="#FFFFFF" w="max">
                                         <linear dir="v" h="auto" padding="16" w="max">
-                                            <text margin_bottom="8" textSize="16" text="运行功能" typeface="bold" />
-                                            <radio-group id="runFunction" dir="h" gravity="center" w="max">
-                                                <radio id="radioChaDiaoXiang" text="  查雕像  " textSize="16" checked="true" />
-                                                <radio id="radioAutoSonar" text="  自动声纳  " textSize="16" margin_left="40" />
-                                            </radio-group>
+                                            <text margin_bottom="10" textSize="16" text="运行功能" typeface="bold" />
+                                            <!--
+                                                分段按钮（MaterialButtonToggleGroup）
+                                                属性出处：ui/button-button-group.md + 官方示例
+                                                examples/$ui - 交互界面/03.button-group-按钮组/ui.xml
+                                                注意：button-group 没有 color/radius 属性，样式靠 button 的 style 走
+                                            -->
+                                            <button-group id="runFunction" dir="h" gravity="center" w="max"
+                                                singleSelect="true" selectRequire="true">
+                                                <button id="runBtnChaDiao" style="outline" text="查雕像"
+                                                    textSize="14" weight="1" />
+                                                <button id="runBtnSonar" style="outline" text="自动声纳"
+                                                    textSize="14" weight="1" />
+                                            </button-group>
+                                            <!-- 随选择变化的说明文字 -->
+                                            <text id="runFunctionHint" margin_top="8" textSize="12"
+                                                color="#888888" text="检查岛屿上所有雕像的升级状态" />
                                         </linear>
                                     </card>
 

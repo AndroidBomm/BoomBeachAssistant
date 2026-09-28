@@ -10,6 +10,7 @@ desktop.ini
 *.log
 *~
 _ui_*.png
+_final_*.png
 _run_shot.png
 *.bak
 
