@@ -308,6 +308,58 @@
                                         </linear>
                                     </linear>
                                 </card>
+
+                                <!--弱网测试卡片（新增，设备信息卡片保持不动）-->
+                                <card h="auto" margin_bottom="16" radius="4" style="elevate"
+                                    tint="#FFFFFF" w="max">
+                                    <linear dir="v" padding="16" w="max">
+                                        <!-- 标题 -->
+                                        <text margin_bottom="8" textSize="16" text="弱网测试"
+                                               textStyle="bold" />
+
+                                        <!-- 当前目标服务器 -->
+                                        <linear dir="h" gravity="center_vertical" margin_bottom="8">
+                                            <text margin_right="8" textSize="14" text="当前目标："
+                                                  w="100" />
+                                            <text id="weakTarget" textSize="14"
+                                                  text="读取中" w="max" />
+                                        </linear>
+
+                                        <!-- 断网状态 + 计时 -->
+                                        <linear dir="h" gravity="center_vertical" margin_bottom="8">
+                                            <text margin_right="8" textSize="14" text="断网状态："
+                                                  w="100" />
+                                            <text id="weakDot" textSize="10" text="●"
+                                                  textColor="#9E9E9E" margin_right="4" />
+                                            <text id="weakStatus" textSize="14"
+                                                  text="未断网" w="max" />
+                                        </linear>
+
+                                        <!-- 断网模式 -->
+                                        <linear dir="h" gravity="center_vertical" margin_bottom="12">
+                                            <text margin_right="8" textSize="14" text="断网模式："
+                                                  w="100" />
+                                            <text id="weakMode" textSize="14"
+                                                  text="只丢 TCP，UDP 放行" w="max" />
+                                        </linear>
+
+                                        <!-- 操作按钮 -->
+                                        <linear dir="h" gravity="center" w="max" margin_bottom="8">
+                                            <button id="btnWeakOn" text="开启弱网" w="0"
+                                                weight="1" h="40" textSize="13" margin_right="4"
+                                                bg="#4CAF50" textColor="#FFFFFF" radius="6" />
+                                            <button id="btnWeakRetry" text="断网重连" w="0"
+                                                weight="1" h="40" textSize="13"
+                                                bg="#1976D2" textColor="#FFFFFF" radius="6" />
+                                        </linear>
+                                        <button id="btnWeakOff" text="立即恢复网络" w="max"
+                                            h="40" textSize="13"
+                                            bg="#E53935" textColor="#FFFFFF" radius="6" />
+
+                                        <text id="weakHint" margin_top="8" textSize="12"
+                                              text="只断游戏自己，模拟器和调试不受影响" textColor="#999" />
+                                    </linear>
+                                </card>
                            </linear>
                         </scroll>
                     </frame>

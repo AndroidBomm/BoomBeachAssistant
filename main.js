@@ -32,10 +32,21 @@ let serverType = ui.id("serverType"); //版本选择
 let btnUnlockCloud = ui.id("btnUnlockCloud"); //卸载锁云按钮
 let btnLockCloud = ui.id("btnLockCloud"); //执行锁云按钮
 
+//[更多页控件]
+let weakDot = ui.id("weakDot");           //弱网状态圆点
+let weakStatus = ui.id("weakStatus");     //弱网状态文字
+let weakTarget = ui.id("weakTarget");     //弱网当前目标服务器
+let weakMode = ui.id("weakMode");         //弱网模式说明
+let weakHint = ui.id("weakHint");         //弱网提示
+let btnWeakOn = ui.id("btnWeakOn");       //开启弱网按钮
+let btnWeakRetry = ui.id("btnWeakRetry"); //断网重连按钮
+let btnWeakOff = ui.id("btnWeakOff");     //立即恢复按钮
+
 //参数配置
 
 let lockcloud = require("./modules/lockcloud.js");
 let configManager = require("./modules/configManager.js");
+let netControl = require("./modules/netControl.js");
 // let accountManager = require("./modules/accountManager.js");
 
 
@@ -239,6 +250,17 @@ if (btnStop) {
         try { $floaty.closeAll(); } catch (e) {}
         toast("正在关闭所有任务...");
         $log.i("用户点击关闭，停止所有任务");
+
+        // 🚨 关键修复：一定要 ui.finish() 结束本界面！
+        // 之前只 stopAll 不 finish，Activity 留在栈里，每运行一次就多压一个界面，
+        // 次数多了 AutoGOD 客户端会崩溃卡死。（ui.finish() 官方 API）
+        try {
+            ui.finish();
+            $log.i("已调用 ui.finish() 结束界面");
+        } catch (e) {
+            $log.e("ui.finish() 失败: " + e.message);
+        }
+
         // 停止所有线程（包括脚本线程）
         try { $thread.stopAll(); } catch(e) {}
         // 停止所有引擎任务
@@ -1033,7 +1055,7 @@ function setupDeviceInfo() {
 
     } catch (e) {
         if (typeof $log !== 'undefined' && $log.e) {
-            $log.e("设备信息", "初始化失败: " + (e.message || e.toString() || "未知错误"));
+            $log.e("[设备信息] 初始化失败: " + (e.message || e.toString() || "未知错误"));
         }
     }
 }
@@ -1059,7 +1081,7 @@ function refreshMemoryInfo() {
         }
     } catch (e) {
         if (typeof $log !== 'undefined' && $log.e) {
-            $log.e("内存刷新", "刷新失败: " + (e.message || e.toString() || "未知错误"));
+            $log.e("[内存刷新] 刷新失败: " + (e.message || e.toString() || "未知错误"));
         }
     }
 }
@@ -1069,11 +1091,189 @@ let memoryRefreshTimer = setInterval(() => {
     refreshMemoryInfo();
 }, 3000); // 每3秒刷新一次
 
+/* ==================== 单实例守卫 ==================== */
+// 用户反馈：「每次运行项目不会先退出上一个项目的 ui，次数多了客户端会崩溃卡死」
+// 做法：每个实例启动时把自己的编号写进一个文件；定时自检，
+//      一旦发现文件里的编号不是自己（说明又开了新实例），就 ui.finish() 自动退出。
+// 这样无论怎么反复运行，界面上永远只剩最新那一个。
+let _uiOwnerId = String(Date.now()) + "_" + String(Math.floor(Math.random() * 1000000));
+let _uiOwnerPath = "/sdcard/Download/海岛助手/_ui_owner.txt";
+
+function uiOwnerWrite() {
+    try { $file.write(_uiOwnerId, _uiOwnerPath); } catch (e) {
+        $log.e("[单实例] 写编号失败: " + e.message);
+    }
+}
+function uiOwnerRead() {
+    try { return $file.exists(_uiOwnerPath) ? String($file.read(_uiOwnerPath)).trim() : ""; }
+    catch (e) { return ""; }
+}
+
+uiOwnerWrite();
+
+let uiOwnerTimer = setInterval(() => {
+    let cur = uiOwnerRead();
+    if (cur && cur !== _uiOwnerId) {
+        $log.i("[单实例] 检测到有更新的实例启动了，本界面自动退出（避免界面堆叠）");
+        clearInterval(uiOwnerTimer);
+        uiOwnerTimer = null;
+        try { ui.finish(); } catch (e) { }
+    }
+}, 2000);
+
+/* ==================== 弱网测试（「更多」页） ==================== */
+// 说明：本模块一律不调 $root.getPermit()。
+// 实测（本机雷电）：getPermit() 之后 root 命令会永久卡死（同步异步都不返回），
+// 无报错、无异常、AutoGOD 进程照常活着——极难排查。所以改用 hasPermit() 查询。
+
+// 取当前该针对哪个包（跟随首页的版本选择，和真正断网时的包名一致）
+// 注意：切到别的页面后，首页那个 radio-group 取不到文本（返回空），
+// 所以优先读配置里存的值，取不到再退回问 radio。
+function weakServerTypeText() {
+    try {
+        let t = (serverType && typeof serverType.getCheckedText === "function")
+            ? (serverType.getCheckedText() || "").trim() : "";
+        if (t) return t;
+    } catch (e) { /* 忽略，走配置 */ }
+    try {
+        let t2 = configManager.getConfigItem("serverType", "");
+        if (t2 && String(t2).trim()) return String(t2).trim();
+    } catch (e) { /* 忽略 */ }
+    return "国际服"; // 项目一贯的默认值
+}
+
+function weakCurrentPkg() {
+    return netControl.resolvePackage(weakServerTypeText());
+}
+
+// 刷新弱网卡片上的状态显示
+// ⚠️ 这里每秒跑一次，**绝对不许调 root 命令**（resolveUid 之类），
+//    只用模块缓存的状态，否则界面会卡住。
+function refreshWeakNetUI() {
+    try {
+        let st = netControl.status();
+
+        if (weakTarget) {
+            let pkg = st.pkg || weakCurrentPkg();
+            if (!pkg) {
+                weakTarget.setText("请先在首页选版本");
+            } else if (st.uid) {
+                weakTarget.setText(netControl.pkgLabel(pkg) + "（UID " + st.uid + "）");
+            } else {
+                weakTarget.setText(netControl.pkgLabel(pkg));
+            }
+        }
+
+        if (st.on) {
+            if (weakDot) weakDot.setColor("#E53935");
+            if (weakStatus) weakStatus.setText("已断网 " + st.heldText);
+        } else {
+            if (weakDot) weakDot.setColor("#4CAF50");
+            if (weakStatus) weakStatus.setText("未断网");
+        }
+    } catch (e) {
+        if (typeof $log !== "undefined" && $log.e) $log.e("[弱网] 刷新界面失败: " + e.message);
+    }
+}
+
+let weakRefreshTimer = setInterval(refreshWeakNetUI, 1000);
+refreshWeakNetUI();
+
+// 诊断：确认控件都找到了
+$log.i("[弱网] 控件检查: weakTarget=" + (weakTarget ? "有" : "无") +
+    " weakDot=" + (weakDot ? "有" : "无") +
+    " weakStatus=" + (weakStatus ? "有" : "无") +
+    " btnWeakOn=" + (btnWeakOn ? "有" : "无") +
+    " btnWeakRetry=" + (btnWeakRetry ? "有" : "无") +
+    " btnWeakOff=" + (btnWeakOff ? "有" : "无") +
+    " hasRoot=" + netControl.hasRoot() +
+    " 当前包=" + weakCurrentPkg());
+
+if (btnWeakOn) {
+    btnWeakOn.click(() => {
+        $log.i("[弱网] == 点了「开启弱网」==");
+        let pkg = weakCurrentPkg();
+        if (!pkg) {
+            toast("请先在首页选好是国服还是国际服");
+            return;
+        }
+        toast("正在开弱网...");
+        netControl.enable({ serverType: weakServerTypeText() }, (err, info) => {
+            if (err) {
+                $log.e("[弱网] 开启失败: " + err.message);
+                toast("开弱网失败：" + err.message);
+            } else {
+                $log.i("[弱网] 开启成功: " + JSON.stringify(info));
+                toast("已断网：" + info.label + "（UID " + info.uid + "）");
+            }
+            refreshWeakNetUI();
+        });
+    });
+} else {
+    $log.e("[弱网] 没找到 btnWeakOn 控件，按钮事件没绑上！");
+}
+
+if (btnWeakOff) {
+    btnWeakOff.click(() => {
+        netControl.disable((err, info) => {
+            toast((info && info.leftOver > 0)
+                ? ("已恢复，但仍剩 " + info.leftOver + " 条规则")
+                : "已恢复网络");
+            refreshWeakNetUI();
+        });
+    });
+}
+
+if (btnWeakRetry) {
+    btnWeakRetry.click(() => {
+        // 「断网重连」= 强停游戏再重开，逼游戏重新建立连接。
+        // 【绝不】用 svc wifi disable —— 模拟器的 wlan0 关掉就再也连不回来（会卡死）
+        let pkg = netControl.activePkg() || weakCurrentPkg();
+        if (!pkg) {
+            toast("请先在首页选好是国服还是国际服");
+            return;
+        }
+        toast("正在重启游戏...");
+        try {
+            $root.exeRootShell(
+                `nsenter -t 1 -m am force-stop ${pkg} 2>/dev/null || am force-stop ${pkg}`,
+                () => { },
+                (e) => { $log.e("[弱网] 强停失败: " + e); },
+                (code) => {
+                    $log.i("[弱网] 强停 " + pkg + " 退出码 " + code);
+                    setTimeout(() => {
+                        try { $app.run(pkg); } catch (e) { $log.e("[弱网] 重启失败: " + e.message); }
+                    }, 600);
+                }
+            );
+        } catch (e) {
+            $log.e("[弱网] 强停异常: " + e.message);
+        }
+    });
+}
+
 // 应用退出时清理定时器
 ui.onDestroy(() => {
     if (memoryRefreshTimer) {
         clearInterval(memoryRefreshTimer);
         memoryRefreshTimer = null;
+    }
+    if (weakRefreshTimer) {
+        clearInterval(weakRefreshTimer);
+        weakRefreshTimer = null;
+    }
+    if (uiOwnerTimer) {
+        clearInterval(uiOwnerTimer);
+        uiOwnerTimer = null;
+    }
+    // 🚨 关键：退出前一定把断网规则清干净，绝不留下断网状态
+    try {
+        if (netControl.isOn()) {
+            $log.w("[弱网] 界面退出，自动恢复网络");
+            netControl.forceClear(() => { });
+        }
+    } catch (e) {
+        $log.e("[弱网] 退出清理失败: " + e.message);
     }
     // 关闭所有悬浮窗
     try { $floaty.closeAll(); } catch (e) {}
