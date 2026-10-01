@@ -13,6 +13,9 @@ desktop.ini
 # 开发时随手截的临时图/临时数据（调试截图、验证图等），一律不进仓库
 _*.png
 _*.json
+# _ui_owner.txt 是「单实例守卫」在设备上记录的当前界面编号（main.js 自动写），
+# 属于运行时状态文件，从设备同步回来时不要提交
+_*.txt
 
 # ---- 声纳素材（本地留着用，不进仓库）----
 # res/sonar_bg/ 是从 AndroidBomm/boombeach 的 save_points/imgs 下载的 13 张海域截图
