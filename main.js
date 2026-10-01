@@ -1226,28 +1226,67 @@ if (btnWeakOff) {
 
 if (btnWeakRetry) {
     btnWeakRetry.click(() => {
-        // 「断网重连」= 强停游戏再重开，逼游戏重新建立连接。
+        // 「断网重连」= 一键操作，三步全自动：
+        //   ① 强停游戏（清掉游戏里卡住的连接状态）
+        //   ② 恢复网络（把断网规则撤掉）—— 这一步以前漏了！
+        //   ③ 重新启动游戏
         // 【绝不】用 svc wifi disable —— 模拟器的 wlan0 关掉就再也连不回来（会卡死）
         let pkg = netControl.activePkg() || weakCurrentPkg();
         if (!pkg) {
             toast("请先在首页选好是国服还是国际服");
             return;
         }
-        toast("正在重启游戏...");
+        toast("正在断网重连（重启游戏 + 恢复网络）...");
+        $log.i("[弱网] 断网重连开始，目标 " + pkg);
+
+        let moved = false;
+
+        // ② 恢复网络 + ③ 重启游戏
+        function restoreAndLaunch() {
+            if (moved) return;      // 只走一次
+            moved = true;
+
+            netControl.disable(function (err, info) {
+                refreshWeakNetUI();
+                $log.i("[弱网] 断网重连：网络已恢复" +
+                       (info && info.leftOver > 0 ? "（还剩 " + info.leftOver + " 条规则）" : ""));
+                setTimeout(function () {
+                    try {
+                        $app.run(pkg);
+                        toast("已恢复网络，正在重新启动游戏");
+                    } catch (e) {
+                        $log.e("[弱网] 重启游戏失败: " + e.message);
+                        toast("网络已恢复，但重启游戏失败：" + e.message);
+                    }
+                }, 800);
+            });
+        }
+
+        // 兜底：万一强停的回调不回来，5 秒后也一定要把网络恢复
+        setTimeout(function () {
+            if (!moved) {
+                $log.w("[弱网] 强停回调超时，直接恢复网络");
+                restoreAndLaunch();
+            }
+        }, 5000);
+
+        // ① 强停游戏
         try {
             $root.exeRootShell(
                 `nsenter -t 1 -m am force-stop ${pkg} 2>/dev/null || am force-stop ${pkg}`,
                 () => { },
-                (e) => { $log.e("[弱网] 强停失败: " + e); },
+                (e) => {
+                    $log.e("[弱网] 强停失败: " + e);
+                    restoreAndLaunch();
+                },
                 (code) => {
                     $log.i("[弱网] 强停 " + pkg + " 退出码 " + code);
-                    setTimeout(() => {
-                        try { $app.run(pkg); } catch (e) { $log.e("[弱网] 重启失败: " + e.message); }
-                    }, 600);
+                    restoreAndLaunch();
                 }
             );
         } catch (e) {
             $log.e("[弱网] 强停异常: " + e.message);
+            restoreAndLaunch();
         }
     });
 }
