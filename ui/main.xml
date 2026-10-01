@@ -10,9 +10,9 @@
                 <!--标签栏组件-->
                     <tab id="tabs"  padding="0,2,0,2" w="max" h="34" >
                         <item text="首页" icon=""/>
-                        <item text="账号信息" icon=""/>
-                        <item text="查雕设置" icon=""/>
-                        <item text="声纳设置" icon=""/>
+                        <item text="账号" icon=""/>
+                        <item text="查雕" icon=""/>
+                        <item text="声纳" icon=""/>
                         <item text="更多" icon=""/>
                     </tab>
                 
