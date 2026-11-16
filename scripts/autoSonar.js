@@ -579,53 +579,27 @@ function rootSync(cmd) {
     if (r.code === -2) throw new Error('root 桥超时');
     return String(r.out || "");
 }
-function syncUid() {
-    var pkg = PKG[CFG.serverType];
-    var out = rootSync("dumpsys package " + pkg + " | grep -m1 'userId='");
-    var m = out.match(/userId=(\d+)/);
-    return m ? parseInt(m[1]) : 0;
-}
-function syncOn(uid) {
-    rootSync('iptables -w -I OUTPUT 1 -m owner --uid-owner ' + uid + ' -p tcp -j DROP');
-}
-function syncOff(uid) {
-    for (var i = 0; i < 5; i++) {
-        var o = '';
-        try { o = rootSync('iptables -w -D OUTPUT -m owner --uid-owner ' + uid + ' -p tcp -j DROP'); }
-        catch (e) { break; }
-        if (String(o).indexOf('Bad rule') >= 0 || String(o).indexOf('No chain') >= 0) break;
-    }
-}
-var _syncUidCache = 0;
+// ⚠️ 弱网的 UID 解析与 iptables 增删已统一放在 modules/netControl.js（同步版 API），
+//    本文件不再自己抄一份。
 function netEnable() {
-    // 只用同步 root：一旦碰过异步 $root.exeRootShell，同步通道就会被毒死
+    // 统一走 netControl 的同步版：清残留 → 加规则 → 核验恰好 1 条
     say('断网：取 UID…');
-    try {
-        _syncUidCache = syncUid();
-    } catch (e) {
-        return { ok: false, err: '取 UID 异常：' + (e && e.message ? e.message : e) };
-    }
-    if (!_syncUidCache) return { ok: false, err: '取不到 UID' };
-    say('UID=' + _syncUidCache + '，加丢包规则…');
-    try { syncOff(_syncUidCache); } catch (e0) { }   // 先清残留，否则旧规则会让核验假通过
-    try {
-        syncOn(_syncUidCache);
-    } catch (e2) {
-        return { ok: false, err: '加规则失败：' + (e2 && e2.message ? e2.message : e2) };
-    }
-    // ★ 必须核验规则真的插进去了：这一步以前没有，导致规则没生效时照发，
-    //   那一发就真的提交给服务器（2026-11-15 实测因此白扣 1 发）。
-    var _chk = '';
-    try { _chk = String(rootSync("iptables -w -S OUTPUT | grep -c 'uid-owner " + _syncUidCache + "'") || ''); } catch (e3) { _chk = ''; }
-    var _rn = parseInt((_chk.match(/([0-9]+)/) || [0, '0'])[1], 10);
-    if (_rn !== 1) return { ok: false, err: '断网规则数异常（核验=' + _chk + '，应为 1 条），不发弹' };
-    say('已断网（sync）并核验，规则数=1');
-    return { ok: true, via: 'sync' };
+    var r;
+    try { r = net.enableSync({ serverType: CFG.serverType, mode: 'tcp' }); }
+    catch (e) { return { ok: false, err: '断网异常：' + (e && e.message ? e.message : e) }; }
+    if (!r || !r.ok) return { ok: false, err: (r && r.err) || '断网失败' };
+    say('已断网 UID=' + r.uid + '（' + r.label + '）并核验，规则数=1');
+    return r;
 }
 function netDisable() {
-    if (!_syncUidCache) return { ok: true };
-    try { syncOff(_syncUidCache); say('已恢复网络（sync）'); return { ok: true }; }
-    catch (e) { say('恢复网络异常：' + (e && e.message ? e.message : e)); return { ok: false }; }
+    try {
+        var r = net.disableSync();
+        if (r && r.ok) { say('已恢复网络'); return { ok: true }; }
+        return { ok: false };
+    } catch (e) {
+        say('恢复网络异常：' + (e && e.message ? e.message : e));
+        return { ok: false };
+    }
 }
 
 function grayDialog(mat) {
@@ -856,7 +830,7 @@ function probeOne(b, r, c, done) {
     say('--- 探测 (' + r + ',' + c + ') 格心 ' + p[0] + ',' + p[1] + ' ---');
     var ne = netEnable();
     if (!ne || !ne.ok) { say('断网失败：' + (ne && ne.err ? ne.err : '未知')); return done(null); }
-    say('已断网 UID=' + _syncUidCache);
+    say('已断网 UID=' + (ne && ne.uid ? ne.uid : '?'));
     if (!enterBoard()) { say('进棋盘失败（打之前），放弃这一格（不发弹）'); netDisable(); return done(null); }
     setTimeout(function () {
         var bp = findBtn('blue');
@@ -1027,18 +1001,20 @@ var UID = 0;
 function finish() {
     say('========== 结束，共探测 ' + S.probed + ' 格 ==========');
     say('最终棋盘：' + (S.states ? boardText(S.states) : '（还没读到棋盘）'));
-    // 安全兜底：无论怎么退出的，都必须把 DROP 规则清干净，绝不让游戏留在断网状态
+    // 安全兜底：无论怎么退出的，都必须把 DROP 规则清干净，绝不让游戏留在断网状态。
+    // 清理逻辑本身也在 netControl 里（disableSync 会按 uid 一条条删到 0 条）。
     try {
+        net.disableSync();
+        // 再兜一次：万一 _syncState 丢了，就按当前包名的 uid 强清
         var pk = net.resolvePackage(CFG.serverType) || '';
-        var uid = UID;
-        var cmds = [];
-        if (uid) {
-            cmds.push('iptables -w -D OUTPUT -m owner --uid-owner ' + uid + ' -p tcp -j DROP');
-            cmds.push('iptables -w -D OUTPUT -m owner --uid-owner ' + uid + ' -j DROP');
+        var uid2 = pk ? net.resolveUidSync(pk) : 0;
+        if (uid2) {
+            for (var g = 0; g < 10; g++) {
+                if (net.ruleCountSync(uid2) <= 0) break;
+                try { $root.exeRootShellSync('iptables -w -D OUTPUT -m owner --uid-owner ' + uid2 + ' -p tcp -j DROP'); } catch (e) { break; }
+            }
         }
-        cmds.push('iptables -S OUTPUT | grep -c uid-owner');
-        for (var i = 0; i < cmds.length; i++) { try { $root.exeRootShellSync(cmds[i]); } catch (e) { } }
-        say('已执行断网规则清理兜底');
+        say('已执行断网规则清理兜底（剩余 uid-owner 规则 ' + (uid2 ? net.ruleCountSync(uid2) : 0) + ' 条）');
     } catch (e) { say('清理兜底异常：' + (e && e.message ? e.message : e)); }
 }
 

@@ -495,6 +495,82 @@ function diag(callback) {
 }
 
 
+/* ==================== 同步版（供阻塞式脚本调用） ====================
+ * 为什么要有同步版：autoSonar 是一条「断网→取图→点击→回滚」的阻塞流程，
+ * 异步回调在阻塞期间不触发（实测 sleep 期间 root 回调一次都不执行）。
+ * 把同步实现放在本模块里，调用方就不用再抄一份 iptables 逻辑。
+ */
+let _syncState = { uid: 0, pkg: "" };
+
+function rootSync(cmd) {
+    if (!$root || typeof $root.exeRootShellSync !== "function") {
+        throw new Error("当前环境没有 $root.exeRootShellSync");
+    }
+    return String($root.exeRootShellSync(cmd) || "");
+}
+
+function resolveUidSync(pkg) {
+    if (!pkg) return 0;
+    let m = rootSync("dumpsys package " + pkg + " | grep -m1 'userId='").match(/userId=(\d+)/);
+    if (m) return parseInt(m[1], 10);
+    let parts = rootSync("cat /data/system/packages.list | grep -m1 '^" + pkg + " '").trim().split(/\s+/);
+    let uid = parseInt(parts[1], 10);
+    return (!isNaN(uid) && uid > 0) ? uid : 0;
+}
+
+function ruleCountSync(uid) {
+    let out = "";
+    try { out = rootSync("iptables -w -S OUTPUT | grep -c 'uid-owner " + uid + "'"); } catch (e) { out = ""; }
+    let m = String(out).match(/([0-9]+)/);
+    return m ? parseInt(m[1], 10) : 0;
+}
+
+/** 同步断网：清残留 → 加规则 → **核验恰好 1 条**。核验不过返回 ok:false，调用方绝不能发弹。 */
+function enableSync(opts) {
+    opts = opts || {};
+    let pkg = resolvePackage(opts.serverType);
+    let mode = opts.mode || "tcp";
+    if (!pkg) return { ok: false, err: "包名为空" };
+    let uid = 0;
+    try { uid = resolveUidSync(pkg); }
+    catch (e) { return { ok: false, err: "取 UID 异常：" + (e && e.message ? e.message : e) }; }
+    if (!uid) return { ok: false, err: "取不到 UID（" + pkg + "）" };
+
+    disableSync();   // 先清残留，否则旧规则会让核验假通过
+    let cmd = "iptables -w -I OUTPUT 1 -m owner --uid-owner " + uid +
+              (mode === "tcp" ? " -p tcp" : "") + " -j DROP";
+    try { rootSync(cmd); }
+    catch (e2) { return { ok: false, err: "加规则失败：" + (e2 && e2.message ? e2.message : e2) }; }
+
+    let n = ruleCountSync(uid);
+    if (n !== 1) return { ok: false, err: "断网规则数异常（核验 " + n + " 条，应为 1 条），不发弹" };
+    _syncState.uid = uid; _syncState.pkg = pkg;
+    return { ok: true, uid: uid, pkg: pkg, label: pkgLabel(pkg) };
+}
+
+/** 同步恢复：按 uid 逐条删，直到一条不剩。 */
+function disableSync() {
+    let uid = _syncState.uid;
+    if (!uid) return { ok: true, removed: 0 };
+    let removed = 0, guard = 0;
+    while (guard++ < 20) {
+        try { if (ruleCountSync(uid) <= 0) break; }
+        catch (e) { break; }
+        try { rootSync("iptables -w -D OUTPUT -m owner --uid-owner " + uid + " -p tcp -j DROP"); removed++; }
+        catch (e2) { break; }
+    }
+    guard = 0;
+    while (_syncState.uid && guard++ < 20) {
+        try {
+            let n = ruleCountSync(uid);
+            if (n <= 0) break;
+            rootSync("iptables -w -D OUTPUT -m owner --uid-owner " + uid + " -j DROP"); removed++;
+        } catch (e3) { break; }
+    }
+    _syncState.uid = 0;
+    return { ok: true, removed: removed };
+}
+
 /* ==================== 导出 ==================== */
 
 let net = {
@@ -510,6 +586,13 @@ let net = {
     enable: enable,
     disable: disable,
     forceClear: forceClear,
+
+    // 同步版（阻塞式脚本用）
+    rootSync: rootSync,
+    resolveUidSync: resolveUidSync,
+    enableSync: enableSync,
+    disableSync: disableSync,
+    ruleCountSync: ruleCountSync,
 
     isOn: isOn,
     heldMs: heldMs,
