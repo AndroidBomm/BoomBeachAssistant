@@ -80,7 +80,7 @@ var CFG = {
     redBomb: [1210, 650],
     idleBtn: [390, 462],
     retryBtn: [347, 427],    // 「连接中断」弹窗里的「重试」
-    discardMode: 'wifi',     // 'wifi'=WiFi伪重启(快,默认)  'kill'=强停重开(慢,兜底)
+    discardMode: 'kill',     // 只用强停重开。'wifi' 方案已禁用：实测反复把 adb 搞断（2026-11-16 用户叫停）
     maxProbe: 25
 };
 
@@ -734,7 +734,10 @@ function killGameVerified(cb, tryNo) {
     });
 }
 
-// ==================== WiFi 伪重启（主方案，约 25 秒）====================
+// ==================== WiFi 伪重启（⛔ 已禁用，仅留代码备查）====================
+// 实测：svc wifi disable 成对下发虽然能 4 秒逼出「连接中断」弹窗，
+// 但会把 adb 一起断掉，雷电的 wlan0 是唯一出口 → 连不上只能手动重启模拟器。
+// 不要调用本函数。
 // 不杀进程：断链路 -> 逼出「连接中断」-> 删 DROP -> 点重试 -> 游戏自己重新载入
 // 重载会把内存里那一发丢掉，服务器从没收到过，所以不扣炮弹。
 // 返回 true=成功（已重新进棋盘）；false=失败（调用方切副方案）
@@ -759,13 +762,14 @@ function wifiPseudoRestart() {
 
 // ==================== 丢弃调度 ====================
 function discardShot(cb) {
+    // ⛔ 不再用「开关 WiFi 逼弹窗」那套：实测会把 adb 一起断掉，模拟器直接失联、
+    //    只能手动重启雷电（2026-11-16 连续废了两次，用户明确叫停）。
+    //    现在唯一做法 = 强停进程 + 恢复网络 + 重开。
     if (CFG.discardMode === 'wifi') {
-        var ok = false;
-        try { ok = wifiPseudoRestart(); } catch (e) { say('WiFi 伪重启异常：' + (e && e.message ? e.message : e)); }
-        if (ok) { say('丢弃(主)完成'); return cb(true); }
-        say('丢弃(主)失败 → 切副方案');
+        say('⚠️ discardMode=wifi 已禁用，强制改为强停重开');
+        CFG.discardMode = 'kill';
     }
-    say('丢弃(副)：强停重开');
+    say('丢弃：强停重开');
     killGameVerified(function (dead) {
         if (!dead) { say('❗无法确认进程退出，保持断网并中止'); return cb(false); }
         netDisable();
