@@ -54,7 +54,8 @@
  * 三条硬规则（2026-11 真机踩出来的，别犯）：
  *   1. 找图用 imageHandler.findImgFast(img, temp, threshold, sx, sy, ex, ey, count, strictMode)
  *      —— 不是 findImg（它内部 resize+像素ROI 混用会抛 CvException 并被插件吞成 null）。
- *   2. sx/sy/ex/ey 是 **0~10000 归一化坐标**，不是像素！用 nx()/ny() 换算。
+ *   2. sx/sy/ex/ey 是 **0~10000 归一化坐标**，不是像素！
+ *      X 轴用 nx(px, 1280)，Y 轴用 nx(py, 720) —— 同一个函数，换第二个参数而已。
  *   3. 首参必须是 Mat（captureScreenMat 的返回），不能是 $screen.getScreen() 的 Image。
  * ==================================================================
  */
