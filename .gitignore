@@ -28,3 +28,8 @@ res/sonar_bg/
 # ---- 构建输出 ----
 dist/
 build/
+# ---- 开发辅助（不进打包产物）----
+_devtools/
+工具/
+__pycache__/
+*.pyc

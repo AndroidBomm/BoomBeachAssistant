@@ -125,7 +125,53 @@ let btnStop = ui.id("btnStop");
 //   行底色 setTint + 图标 setTint + 标题 setColor + 右侧「当前」文字
 // （<linear> 没有运行时改背景色的方法，所以行必须用 <card>；见 ui/layout-card.md）
 let _runFuncNames = ["查雕像", "自动声纳"];
-let _runFuncScripts = ["chaDiaoXiang", "autoSonar"];
+let _runFuncScripts = ["scripts/chaDiaoXiang.js", "scripts/autoSonar.js"];
+
+/* ==================== root 桥（子脚本用） ====================
+ * 实测：$engine.run 拉起的子脚本里，$root 的同步/异步调用全部失效。
+ * 于是由主实例（这个文件）代跑 root 命令：子脚本把命令写进 _net_cmd.txt，
+ * 主实例每 300ms 检查一次、执行后把结果写进 _net_ack.txt。
+ */
+const _netCmdPath = "/sdcard/Download/海岛助手/_net_cmd.txt";
+const _netAckPath = "/sdcard/Download/海岛助手/_net_ack.txt";
+let _netBridgeTimer = null;
+let _netLastCmd = "";
+
+function _readFileSafe(p) {
+    try { if (!$file.exists(p)) return ""; return String($file.read(p) || ""); } catch (e) { return ""; }
+}
+function netBridgeStart() {
+    if (_netBridgeTimer) return;
+    $file.write("", _netCmdPath);
+    $file.write("", _netAckPath);
+    _netBridgeTimer = setInterval(function () {
+        let cmd = _readFileSafe(_netCmdPath).trim();
+        if (!cmd || cmd === _netLastCmd) return;
+        _netLastCmd = cmd;
+        $file.write("", _netAckPath);       // 先清 ack
+        let id = cmd.split("|")[0];
+        let sh = cmd.substring(id.length + 1);
+        let out = "", err = "", done = false;
+        try {
+            $root.exeRootShell(sh,
+                function (l) { out += l; },
+                function (l) { err += l; },
+                function (code) {
+                    done = true;
+                    let res = JSON.stringify({ id: id, code: code, out: String(out).substring(0, 400), err: String(err).substring(0, 400) });
+                    try { $file.write(res, _netAckPath); } catch (e) { }
+                });
+        } catch (e) {
+            try { $file.write(JSON.stringify({ id: id, code: -1, out: "", err: "桥异常: " + e }), _netAckPath); } catch (e2) { }
+        }
+        // 兜底：6 秒没回调也写一个 ack，避免子脚本永远等
+        setTimeout(function () {
+            if (done) return;
+            try { $file.write(JSON.stringify({ id: id, code: -2, out: String(out).substring(0, 200), err: "桥超时" }), _netAckPath); } catch (e) { }
+        }, 6000);
+    }, 300);
+    $log.i("[root桥] 已启动");
+}
 let _runFuncIndex = 0;
 // 初始化期间不写配置（避免一启动就被默认值覆盖掉上次的选择）
 let _runFuncReady = false;
@@ -236,8 +282,18 @@ if (btnStart) {
         try {
             let scriptName = _runFuncScripts[_runFuncIndex] || "chaDiaoXiang";
             $log.i("启动脚本: " + scriptName + "（运行功能: " + _runFuncNames[_runFuncIndex] + "）");
-            // 用脚本引擎启动，可被 $engine.stopAll() 停止
-            $engine.run("./scripts/" + scriptName + ".js");
+            // 声纳走本实例（回调驱动 + 异步 root 需要 App 事件循环）
+            if (scriptName.indexOf("autoSonar") >= 0) {
+                // 先把游戏切前台，再启声纳（否则截图拿到的是竖屏界面）
+                try { $app.run("com.supercell.boombeach"); } catch (e) { }
+                setTimeout(function () {
+                    try { require("./scripts/autoSonar.js"); }
+                    catch (e) { $log.e("[声纳] 启动异常: " + (e && e.message ? e.message : e)); }
+                }, 3500);
+                return;
+            }
+            // 其它脚本仍用引擎启动，可被 $engine.stopAll() 停止
+            $engine.run("./" + scriptName);
         } catch (e) {
             $log.e("启动失败: " + e.message);
             toast("启动失败: " + e.message);
@@ -768,6 +824,7 @@ try {
 }
 
 ui.show();
+    try { netBridgeStart(); } catch (e) { }
 
 // 延迟初始化权限状态和服务器类型状态，确保UI完全加载
 setTimeout(() => {

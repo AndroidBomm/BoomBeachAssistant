@@ -34,6 +34,7 @@ let imageHandler = require('./modules/OperHandler.js');
 
 
 imageHandler.imageHandlerInit(); //只能初始化一次
+log(imageHandler.version())
 
 
 // ========== 类型诊断：检测截图返回的对象格式 ==========

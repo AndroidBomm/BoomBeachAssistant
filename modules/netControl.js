@@ -24,8 +24,10 @@
  *   - UID 一律运行时解析，不写死（换设备/重装会变，且国服国际服是两个包）
  *
  * 包名 / UID（本机雷电实测）：
- *   国服   com.tencent.tmgp.supercell.boombeach   UID 10055
- *   国际服 com.supercell.boombeach                UID 10065
+ *   UID **不是固定值**，换了模拟器实例/重装游戏就会变：
+ *   实测见过 国服 10055、国际服 10065、国际服 10056（全新实例）。
+ *   所以一律用 resolveUid() 运行时现查，命令里绝不能写死数字。
+ *   包名：国服 com.tencent.tmgp.supercell.boombeach / 国际服 com.supercell.boombeach
  *
  * @module netControl
  */

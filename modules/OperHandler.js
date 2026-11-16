@@ -5,8 +5,9 @@
  * 文档地址:www.ylancf.com 
  * */
 
-let _version_ = "v4.9.4";
+let _version_ = "v5.0.4";
 
+let MatchClass;
 function OperHandler() { }
 
 
@@ -96,8 +97,7 @@ OperHandler.prototype.imageHandlerInit = function () {
     }
     spath1 = spath1 || spath2;
 
-    // 使用 $ext.loadDex 替换 DexClassLoader
-
+    // AutoGod 桥接：用 $ext.loadDex 代替 AutoJs 的 DexClassLoader
     let classLoader = $ext.loadDex({
         path: [dexPath],
         so: [
@@ -112,8 +112,8 @@ OperHandler.prototype.imageHandlerInit = function () {
         ]
     });
 
-    // let classLoader = $ext.loadDex(dexPath);
     let OpencvOperClass = classLoader.loadClass("com.example.opencvlibrary.OpencvOper");
+    MatchClass = classLoader.loadClass("com.example.opencvlibrary.OpencvOper$Match");
     this.Oper = OpencvOperClass.newInstance();
     this.Oper.loadSO(spath1, spath2);
 };
@@ -196,7 +196,7 @@ OperHandler.prototype.findImgBySurf = function findImgBySurf(img, template, imgR
     if (typeof (upright) == 'object' || typeof (upright) == 'undefined') { upright = true; }
 
     try {
-        let res = this.Oper.findImgBySurfEx(img, imgResize, template, tempResize, threshold, sx, sy, ex, ey, upright);
+        let res = this.Oper.findImgBySurf(img, imgResize, template, tempResize, threshold, sx, sy, ex, ey, upright);
         if (res == null) {
             return null;
         }
@@ -404,7 +404,7 @@ OperHandler.prototype.findTranslucentImg = function findTranslucentImg(mat, temp
 
 
     try {
-        let rects = Oper.findTranslucentImg(mat, temp, resize, threshold, sx, sy, ex, ey, count, colorOffset)
+        let rects = this.Oper.findTranslucentImg(mat, temp, resize, threshold, sx, sy, ex, ey, count, colorOffset)
         if (rects == null) { return null; }
         let d = [];
         for (let i = 0; i < rects.length; i++) {
@@ -791,7 +791,7 @@ OperHandler.prototype.findLines = function findLines(img, src_multiple, rho, the
     weakThreshold = weakThreshold || 50;
     strongThreshold = strongThreshold || 100;
     try {
-        let res = this.Oper.findLine(img, src_multiple, rho, theta, threshold, minLineLength, maxLineGap, weakThreshold, strongThreshold);
+        let res = this.Oper.findLines(img, src_multiple, rho, theta, threshold, minLineLength, maxLineGap, weakThreshold, strongThreshold);
         if (res == null) {
             return null;
         }
@@ -822,7 +822,7 @@ OperHandler.prototype.findLines = function findLines(img, src_multiple, rho, the
  * @param dp  {number?} 累加器图像的分辨率 直接写1.5即可
  * @returns  {PointEx[]|null}  返回PointEx数组 继承自Point  例如: 圆心坐标:points[0].x ,points[0].y  圆的半径: points[0].r
  */
-OperHandler.prototype.findCircles = function findCircles(img, minDist, accuracy, minRadius, maxRadius, cannyThreshold, dp) {
+ OperHandler.prototype.findCircles = function findCircles(img, minDist, accuracy, minRadius, maxRadius, cannyThreshold, dp) {
     if ((arguments["_i"] = this.checkMat(img))) {
         logd((/function\s*(\w*)/i).exec(arguments.callee.toString())[0] + arguments["_i"]);
         return null;
@@ -830,13 +830,20 @@ OperHandler.prototype.findCircles = function findCircles(img, minDist, accuracy,
     cannyThreshold = cannyThreshold || 100;
     dp = dp || 1.5;
     try {
-        return this.Oper.findCircles(img, 4, dp, minDist, cannyThreshold, accuracy, minRadius, maxRadius);
+        let points = this.Oper.findCircles(img, 4, dp, minDist, cannyThreshold, accuracy, minRadius, maxRadius);
+        if (points == null) {
+            return null
+        }
+        let pointEx = [];
+        for (let i = 0; i < points.length; i++) {
+            pointEx.push(new PointEx(points[i]));
+        }
+        return pointEx;
     } catch (e) {
         loge("捕获一个错误:" + e.message);
         loge("程序继续运行");
         return null;
     }
-
 }
 
 
@@ -954,7 +961,7 @@ OperHandler.prototype.findImgBySurfEx = function findImgBySurfEx(img, temp, srcM
     nOctaveLayers = nOctaveLayers || 3;
     if (typeof (extended) == 'object' || typeof (extended) == 'undefined') { extended = false; }
     try {
-        let res = this.Oper.findImgByOriginalSurf(img, srcMultiple, temp, tempMultiple, sx, sy, ex, ey, upright, distanceRatio, customFeatures, minHessian, nOctaves, nOctaveLayers, extended);
+        let res = this.Oper.findImgBySurfEx(img, srcMultiple, temp, tempMultiple, sx, sy, ex, ey, upright, distanceRatio, customFeatures, minHessian, nOctaves, nOctaveLayers, extended);
         if (res == null) {
             return null;
         }
@@ -1012,7 +1019,7 @@ OperHandler.prototype.findImgBySiftEx = function findImgBySiftEx(img, temp, srcM
     edgeThreshold = edgeThreshold || 10;
     sigma = sigma || 1.6;
     try {
-        let res = this.Oper.findImgByOriginalSift(img, srcMultiple, temp, tempMultiple, sx, sy, ex, ey, distanceRatio, customFeatures, nFeatures, nOctaveLayers, contrastThreshold, edgeThreshold, sigma);
+        let res = this.Oper.findImgBySiftEx(img, srcMultiple, temp, tempMultiple, sx, sy, ex, ey, distanceRatio, customFeatures, nFeatures, nOctaveLayers, contrastThreshold, edgeThreshold, sigma);
         if (res == null) {
             return null;
         }
@@ -1075,7 +1082,7 @@ OperHandler.prototype.findImgByORBEx = function findImgByORBEx(img, temp, srcMul
     patchSize = patchSize || 31;
     fastThreshold = fastThreshold || 20;
     try {
-        let res = this.Oper.findImgByOriginalORB(img, srcMultiple, temp, tempMultiple, sx, sy, ex, ey, distanceRatio, customFeatures, nfeatures, scaleFactor, nlevels, edgeThreshold, firstLevel, WTA_K, scoreType, patchSize, fastThreshold);
+        let res = this.Oper.findImgByORBEx(img, srcMultiple, temp, tempMultiple, sx, sy, ex, ey, distanceRatio, customFeatures, nfeatures, scaleFactor, nlevels, edgeThreshold, firstLevel, WTA_K, scoreType, patchSize, fastThreshold);
         if (res == null) {
             return null;
         }
@@ -2188,10 +2195,10 @@ OperHandler.prototype.setDict = function setDict(textPath, fontName) {
         }
         let str = $file.read(textPath);
         if(!str){
-            loge(fontName+"字库不存在或者为空！");
+            loge(textPath+" 字库不存在或者为空！");
             return false;
         }
-        return this.Oper.SetFontOcrMap(str, fontName);
+        return this.Oper.setDict(str, fontName);
     } catch (e) {
         loge("字库设置失败 错误信息:" + e.message);
         loge("程序继续运行");
@@ -2213,7 +2220,7 @@ OperHandler.prototype.setDictBySDcard = function setDictBySDcard(textPath, fontN
         loge(fontName+"字库不存在或者为空！");
         return false;
     }
-    return this.Oper.SetFontOcrMap(str, fontName);
+    return this.Oper.setDict(str, fontName);
 }
 
 
@@ -2224,7 +2231,7 @@ OperHandler.prototype.setDictBySDcard = function setDictBySDcard(textPath, fontN
  *  @returns {bool}  返回操作是否成功
  */
 OperHandler.prototype.useDict = function useDict(fontName) {
-    return this.Oper.UseFontLibrary(fontName);
+    return this.Oper.useDict(fontName);
 }
 
 
@@ -2235,7 +2242,7 @@ OperHandler.prototype.useDict = function useDict(fontName) {
  */
 OperHandler.prototype.removeDict = function removeDict(fontName) {
     fontName = fontName || "";
-    return this.Oper.RemoveFontLibrary(fontName);
+    return this.Oper.removeDict(fontName);
 }
 
 
@@ -2268,7 +2275,7 @@ OperHandler.prototype.findStr = function findStr(img, text, sx, sy, ex, ey, thre
         threshold = threshold || 0.9;
         count = count || 1;
         fontName = fontName || "";
-        let rects = this.Oper.LocalOcr(img, text, threshold, sx, sy, ex, ey, count, fontName);
+        let rects = this.Oper.findStr(img, text, threshold, sx, sy, ex, ey, count, fontName);
         if (rects == null) { return null; }
         let d = [];
         for (let i = 0; i < rects.length; i++) {
@@ -2310,7 +2317,7 @@ OperHandler.prototype.findStrEx = function findStrEx(img, text, sx, sy, ex, ey, 
         threshold = threshold || 0.9;
         count = count || 1;
         fontName = fontName || "";
-        let rects = this.Oper.LocalOcrEx(img, text, threshold, sx, sy, ex, ey, count, fontName);
+        let rects = this.Oper.findStrEx(img, text, threshold, sx, sy, ex, ey, count, fontName);
         if (rects == null) { return null; }
         let d = [];
         for (let i = 0; i < rects.length; i++) {
@@ -2793,7 +2800,7 @@ OperHandler.prototype.findImgByPyramid = function findImgByPyramid(img, temp, oW
     }
     let scaleTimes = Math.abs(Math.ceil((num1 - num2) / (num1 * scalePro))) + 1;
     try {
-        let rects = this.Oper.FindImgByPyramid2(img, temp, sx, sy, ex, ey, 3, threshold - 0.1, threshold, count, scaleTimes, scalePro);
+        let rects = this.Oper.findImgByPyramid(img, temp, sx, sy, ex, ey, 3, threshold - 0.1, threshold, count, scaleTimes, scalePro);
         if (rects == null) { return null; }
         let d = [];
         for (let i = 0; i < rects.length; i++) {
@@ -3118,7 +3125,7 @@ OperHandler.prototype.findStrComb = function findStrComb(img, text, sx, sy, ex, 
         count = count || 1;
         global = global || false;
         fontName = fontName || "";
-        let rects = this.Oper.LocalOcrCombinationHelper(img, text, threshold, sx, sy, ex, ey, count, charInterval, global, true, fontName);
+        let rects = this.Oper.findStrComb(img, text, threshold, sx, sy, ex, ey, count, charInterval, global, true, fontName);
         if (rects == null) { return null; }
         let d = [];
         for (let i = 0; i < rects.length; i++) {
@@ -3158,7 +3165,7 @@ OperHandler.prototype.getWords = function getWords(img, colorInfo, sx, sy, ex, e
         threshold = threshold || 0.9;
         colorFilter = colorFilter || false;
         fontName = fontName || "";
-        let rects = this.Oper.LocalOcrRecognition(img, colorInfo, threshold, sx, sy, ex, ey, colorFilter, fontName);
+        let rects = this.Oper.getWords(img, colorInfo, threshold, sx, sy, ex, ey, colorFilter, fontName);
         if (rects == null) { return null; }
         let d = [];
         for (let i = 0; i < rects.length; i++) {
@@ -3171,6 +3178,12 @@ OperHandler.prototype.getWords = function getWords(img, colorInfo, sx, sy, ex, e
         return null;
     }
 }
+
+
+
+
+
+
 
 
 /**
@@ -3690,7 +3703,7 @@ OperHandler.prototype.gradientShapeMatch = function gradientShapeMatch(imgMat, n
         NMSThreshold = NMSThreshold || 0.3;
         maskMat = maskMat || null;
 
-        let rects = this.Oper.GradientShapeMatch(imgMat, nameList, yamlArr, sx, sy, ex, ey, threshold, count, step, 63, NMSThreshold, maskMat);
+        let rects = this.Oper.GradientShapeMatch(imgMat, nameList, yamlArr, sx, sy, ex, ey, threshold, count, step, NMSThreshold, maskMat);
         if (rects == null) { return null; }
         let d = [];
         for (let i = 0; i < rects.length; i++) {
@@ -3703,6 +3716,8 @@ OperHandler.prototype.gradientShapeMatch = function gradientShapeMatch(imgMat, n
         return null;
     }
 }
+
+
 
 /**
  *  梯度特征匹配扩展 耗时减少70%，相似度略有差异   可全分,可测角度,无视色差,可返回多个不同目标
@@ -3718,7 +3733,7 @@ OperHandler.prototype.gradientShapeMatch = function gradientShapeMatch(imgMat, n
  * @param NMSThreshold {number?} 非极大值抑制阈值 默认0.3; 即两个目标重叠时 面积交集/并集>阈值 将被舍去
  * @return {null|RectEx[]} 返回null或者Rect数组
  */
-OperHandler.prototype.gradientShapeMatchEx = function gradientShapeMatchEx(imgMat, names, sx, sy, ex, ey, threshold, count, step, NMSThreshold) {
+ OperHandler.prototype.gradientShapeMatchEx = function gradientShapeMatchEx(imgMat, names, sx, sy, ex, ey, threshold, count, step, NMSThreshold) {
     sx = sx || 0;
     sy = sy || 0;
     ex = ex || 0;
@@ -3781,7 +3796,7 @@ OperHandler.prototype.gradientShapeMatchEx = function gradientShapeMatchEx(imgMa
         step = step || [4, 8];
         NMSThreshold = NMSThreshold || 0.3;
 
-        let rects = this.Oper.GradientShapeMatchEx(imgMat, nameList, yamlArr, sx, sy, ex, ey, threshold, count, step, NMSThreshold);
+        let rects = this.Oper.GradientShapeMatchEx(imgMat, nameList, yamlArr, sx, sy, ex, ey, threshold, count, step,NMSThreshold);
         if (rects == null) { return null; }
         let d = [];
         for (let i = 0; i < rects.length; i++) {
@@ -3794,6 +3809,9 @@ OperHandler.prototype.gradientShapeMatchEx = function gradientShapeMatchEx(imgMa
         return null;
     }
 }
+
+
+
 
 /**
  * 加载yaml 文件
@@ -3874,7 +3892,7 @@ OperHandler.prototype.loadYaml = function loadYaml(names, path) {
             let namesTemp = [];
             let fileList = [];
             if (path && $file.exists(path)) {
-                fileList = this.findFileNames(path, ".yaml");
+                fileList = this.findFileNames(path, ".yaml"); //$file.ls(path);
             } else {
                 //一次性读取yaml文件, 如果不想全部读取 可以小图放进多个文件夹里
                 let _path = $task.getPath("./") + path;
@@ -4124,143 +4142,72 @@ OperHandler.prototype.getContoursRectEx = function getContoursRectEx(img, mode, 
 
 
 
-/**
- * 直接在手机屏幕上画矩形
- * @param sx  {number} 起点x
- * @param sy  {number} 起点y
- * @param ex  {number} 终点x
- * @param ey  {number} 终点y
- * @param showTime {number?}  画框呈现时长, 单位ms,  默认-1 一直呈现直至调用 removeDrewShow()
- * @param color {string?} 画笔颜色 默认值 "#FF0000"
- * @param viewCanClick {boolean?} 画框是否可点击, true 点击时画框消失,点击事件无法穿透; false 点击时画框不消失,点击事件可穿透,. 默认false
- * @param label {string?}    标签, 默认""
- * @param labelColor {string?} 标签颜色 默认 "#0000BB"
- * @param strokeWidth {number?} 画笔宽度 默认 3
- */
-OperHandler.prototype.drawRectShow = function drawRectShow(sx, sy, ex, ey, showTime, color, viewCanClick, label, labelColor, strokeWidth) {
 
-    try {
-        color = color || "#FF0000";
-        viewCanClick = viewCanClick || false;
-        showTime = showTime || -1;
-        label = label || "";
-        labelColor = labelColor || "#0000BB";
-        strokeWidth = strokeWidth || 3;
-        this.Oper.DrawRectShow(context, sx, sy, ex, ey, showTime, color, viewCanClick, label, labelColor, strokeWidth);
 
-    } catch (e) {
-        loge("捕获一个错误:" + e.message);
-        loge("程序继续运行");
 
+
+
+
+// ==================== 悬浮窗 Overlay 封装 ====================
+
+
+// AutoX.js 中 loadClass 返回的 Class 对象不能 new，需用反射实例化 Match
+// 注意：反射 newInstance 不会自动做 double->int 转换，必须显式装箱
+let _matchCtor = null;
+function newMatchInstance(left, top, right, bottom, similarity, index, info) {
+    if (!_matchCtor) {
+        let I = java.lang.Integer.TYPE, D = java.lang.Double.TYPE;
+        _matchCtor = MatchClass.getConstructor(I, I, I, I, D, I, java.lang.String);
     }
+    return _matchCtor.newInstance(
+        new java.lang.Integer(left),
+        new java.lang.Integer(top),
+        new java.lang.Integer(right),
+        new java.lang.Integer(bottom),
+        new java.lang.Double(similarity),
+        new java.lang.Integer(index),
+        info
+    );
 }
 
-
 /**
- * 直接在手机屏幕上画矩形
- * @param rects  {Rect|Rect[]} 区域rect 或者 数组 (RectEx等同 Rect)
- * @param showTime {number?}  画框呈现时长, 单位ms,  默认-1 一直呈现直至调用 removeDrewShow()
- * @param color {string?} 画笔颜色 默认值 "#FF0000"
- * @param viewCanClick {boolean?} 画框是否可点击, true 点击时画框消失,点击事件无法穿透; false 点击时画框不消失,点击事件可穿透,. 默认false
- * @param label {string?}    标签, 默认""
- * @param labelColor {string?} 标签颜色 默认 "#0000BB"
- * @param strokeWidth {number?} 画笔宽度 默认 3
+ * 内部方法 把 RectEx/Match 对象或数组转换成 Java 的 Match 数组
+ * @param matches {RectEx|Match|Array} 单个或数组
+ * @returns {Match[]}
  */
-OperHandler.prototype.drawRectShow2 = function drawRectShow2(rects, showTime, color, viewCanClick, label, labelColor, strokeWidth) {
-    if (rects == null) { return; }
-    if (Array.isArray(rects)) {
+ OperHandler.prototype.toJavaMatches = function toJavaMatches(matches) {
+    if (matches == null) {
+        return [];
+    }
+    let list = Array.isArray(matches) ? matches : [matches];
+    if (list.length == 0) {
+        return [];
+    }
 
-        for (let i = 0; i < rects.length; i++) {
-            this.drawRectShow(rects[i].left, rects[i].top, rects[i].right, rects[i].bottom, showTime, color, viewCanClick, label, labelColor, strokeWidth);
+    let arr =[];
+    for (let i = 0; i < list.length; i++) {
+        let m = list[i];
+        if (m == null) {
+            continue;
         }
-
-    } else {
-        this.drawRectShow(rects.left, rects.top, rects.right, rects.bottom, showTime, color, viewCanClick, label, labelColor, strokeWidth);
+        arr[i] = newMatchInstance(m.left || 0, m.top || 0, m.right || 0, m.bottom || 0,
+            m.similarity || 0, m.index || i, m.info == null ? "" : m.info);
     }
-}
-
-
-
-/**
- * 直接在手机屏幕上画圆形
- * @param x  {number} 圆心x
- * @param y  {number} 圆心y
- * @param r  {number} 半径r
- * @param showTime {number?}  画框呈现时长, 单位ms,  默认-1 一直呈现直至调用 removeDrewShow()
- * @param color {string?} 画笔颜色 默认值 "#FF0000"
- * @param viewCanClick {boolean?} 画框是否可点击, true 点击时画框消失,点击事件无法穿透; false 点击时画框不消失,点击事件可穿透,. 默认false
- * @param label {string?}    标签, 默认""
- * @param labelColor {string?} 标签颜色 默认 "#0000BB"
- * @param strokeWidth {number?} 画笔宽度 默认 3
- */
-OperHandler.prototype.drawCircleShow = function drawCircleShow(x, y, r, showTime, color, viewCanClick, label, labelColor, strokeWidth) {
-
-    try {
-        color = color || "#FF0000";
-        viewCanClick = viewCanClick || false;
-        showTime = showTime || -1;
-        label = label || "";
-        labelColor = labelColor || "#0000BB";
-        strokeWidth = strokeWidth || 3;
-        this.Oper.DrawCircleShow(context, x, y, r, showTime, color, viewCanClick, label, labelColor, strokeWidth);
-
-    } catch (e) {
-        loge("捕获一个错误:" + e.message);
-        loge("程序继续运行");
-
-    }
+    return arr;
 }
 
 /**
- * 直接在手机屏幕上画点
- * @param x  {number} 圆心x
- * @param y  {number} 圆心y
- * @param showTime {number?}  画框呈现时长, 单位ms,  默认-1 一直呈现直至调用 removeDrewShow()
- * @param color {string?} 画笔颜色 默认值 "#FF0000"
- * @param viewCanClick {boolean?} 画框是否可点击, true 点击时画框消失,点击事件无法穿透; false 点击时画框不消失,点击事件可穿透,. 默认false
- * @param label {string?}    标签, 默认""
- * @param labelColor {string?} 标签颜色 默认 "#0000BB"
- * @param strokeWidth {number?} 画笔宽度 默认 3
+ * 直接在屏幕上画矩形框
+ * 在屏幕上显示匹配结果框(全屏透明悬浮窗)
+ * 首次调用会创建窗口, 之后调用更新内容; 请确保已授予悬浮窗权限
+ * @param matches {RectEx|Match|RectEx[]} 匹配结果(RectEx等同Match), 支持单个对象或者数组
+ * @returns {boolean} true 成功
  */
-OperHandler.prototype.drawPointShow = function drawPointShow(x, y, showTime, color, viewCanClick) {
-
+OperHandler.prototype.showRectOverlay = function showRectOverlay(matches) {
     try {
-        color = color || "#FF0000";
-        viewCanClick = viewCanClick || false;
-        showTime = showTime || -1;
-        this.Oper.DrawCircleShow(context, x, y, 3, showTime, color, viewCanClick, "", "#0000BB", 5);
-    } catch (e) {
-        loge("捕获一个错误:" + e.message);
-        loge("程序继续运行");
-
-    }
-}
-
-
-/**
- * 仅清除屏幕上的绘制,不释放资源
- * @param label {string?} 要清除的标签名称  如果为 "" 则清除所有,默认""
- * @returns {boolean} true 或 false
- */
-OperHandler.prototype.removeFloaty = function removeFloaty(label) {
-
-    try {
-        label = label || "";
-        return this.Oper.RemoveFloaty(context, label);
-    } catch (e) {
-        loge("捕获一个错误:" + e.message);
-        loge("程序继续运行");
-        return false;
-    }
-}
-
-/**
- * 清除屏幕上所有的绘制,同时释放资源
- * @returns {boolean} true 或 false
- */
-OperHandler.prototype.releaseFloaty = function releaseFloaty() {
-    try {
-        return this.Oper.ReleaseFloaty(context);
+        let arr = this.toJavaMatches(matches);
+        this.Oper.ShowRectOverlay(context, arr);
+        return true;
     } catch (e) {
         loge("捕获一个错误:" + e.message);
         loge("程序继续运行");
@@ -4270,37 +4217,102 @@ OperHandler.prototype.releaseFloaty = function releaseFloaty() {
 
 
 /**
- * 直接在手机屏幕展示图片,默认可点击消失
+ * 直接在屏幕上画圆
+ * 在屏幕上显示匹配结果框(全屏透明悬浮窗)
+ * 首次调用会创建窗口, 之后调用更新内容; 请确保已授予悬浮窗权限
+ * @param ps {PointEx|PointEx[]}  支持单个对象或者数组
+ * @returns {boolean} true 成功
+ */
+OperHandler.prototype.showCircleOverlay = function showCircleOverlay(ps) {
+    try {
+        if(!ps){ return  false;}
+        let list = Array.isArray(ps) ? ps : [ps];
+        if (list.length == 0) {
+            return false;
+        }
+        let xs=[],ys=[],rs=[];
+        for (let i = 0; i < list.length; i++) {
+            xs.push(list[i].x);
+            ys.push(list[i].y);
+            rs.push(list[i].r);
+        }
+        this.Oper.ShowCircleOverlay(context, xs,ys,rs);
+        return true;
+    } catch (e) {
+        loge("捕获一个错误:" + e.message);
+        loge("程序继续运行");
+        return false;
+    }
+}
+
+
+/**
+ * 在悬浮窗上显示图片(Mat格式), 再次调用替换图片
  * @param srcMat {Mat} 图片
  * @param x {number?} 起点x 不写或者<0时 自动计算 使图片屏幕居中
  * @param y {number?} 起点y 不写或者<0时 自动计算 使图片屏幕居中
  * @param width {number?} 显示的宽度 等同与伸缩图片 默认为srcMat的宽度
  * @param height {number?} 显示的高度 等同与伸缩图片 默认为srcMat的高度
- * @param showTime {number?} 画框呈现时长, 单位ms,  默认-1 一直呈现直至调用 removeFloaty() 或点击
- * @param color {string?} 边框颜色 默认值 "#00FF00"
+ * @returns {boolean} true 成功
  */
-OperHandler.prototype.drawImageShow = function drawImageShow(srcMat, x, y, width, height, showTime, color) {
+OperHandler.prototype.showImageOverlay = function showImageOverlay(srcMat, x, y, width, height) {
 
     try {
-
         if ((arguments["_i"] = this.checkMat(srcMat))) {
             logd((/function\s*(\w*)/i).exec(arguments.callee.toString())[0] + arguments["_i"]);
-            return;
+            return false;
         }
         width = width || srcMat.getWidth();
         height = height || srcMat.getHeight();
-        if (typeof (x) == 'undefined' || x < 0) { x = $screen.getWidth() / 2 - width / 2; }  //device.width,device.height
-        if (typeof (y) == 'undefined' || y < 0) { y = $screen.getHeight() / 2 - height / 2; }
-        showTime = showTime || -1;
-        color = color || "#00FF00";
-        this.Oper.DrawImageShow(context, srcMat, x, y, width, height, showTime, color);
+        if (typeof (x) == 'undefined' || x < 0) {
+            x = $screen.getWidth() / 2 - width / 2;
+        }
+        if (typeof (y) == 'undefined' || y < 0) {
+            y = $screen.getHeight() / 2 - height / 2;
+        }
+        this.Oper.ShowImageOverlay(context, srcMat, x, y, width, height);
+        return true;
 
     } catch (e) {
         loge("捕获一个错误:" + e.message);
         loge("程序继续运行");
+        return false;
 
     }
 }
+
+
+
+/**
+ * 清空悬浮窗上的所有匹配框(保留窗口)
+ * @returns {boolean} true 成功
+ */
+OperHandler.prototype.clearOverlay = function clearOverlay() {
+    try {
+        this.Oper.ClearOverlay();
+        return true;
+    } catch (e) {
+        loge("捕获一个错误:" + e.message);
+        loge("程序继续运行");
+        return false;
+    }
+}
+
+/**
+ * 移除悬浮窗, 同时释放显示的图片资源
+ * @returns {boolean} true 成功
+ */
+OperHandler.prototype.hideOverlay = function hideOverlay() {
+    try {
+        this.Oper.HideOverlay();
+        return true;
+    } catch (e) {
+        loge("捕获一个错误:" + e.message);
+        loge("程序继续运行");
+        return false;
+    }
+}
+
 
 
 /**
@@ -4642,66 +4654,6 @@ OperHandler.prototype.base64ToMat = function base64ToMat(encoded){
 }
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 /**
  * 使用字库全屏识别文字
  * 内部两个前提假设：1.要识别的字四周都存在空隙(正常字都符合)。
@@ -4739,7 +4691,7 @@ OperHandler.prototype.base64ToMat = function base64ToMat(encoded){
     }
 
     try {
-        let rects = Oper.OcrText(img, colorInfo, threshold, sx, sy, ex, ey, colorFilter,charInterval, fontName);
+        let rects = this.Oper.OcrText(img, colorInfo, threshold, sx, sy, ex, ey, colorFilter,charInterval, fontName);
         if (rects == null) {
             return null;
         }
@@ -4754,6 +4706,63 @@ OperHandler.prototype.base64ToMat = function base64ToMat(encoded){
         return null;
     }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -4807,6 +4816,35 @@ function ConnectedComponents(arr) {
     //形成的矩形面积
     this.rectArea = arr[5] * arr[6];
 }
+
+
+function PointEx(javaPoint) {
+    this.x = 0;
+    this.y = 0;
+    this.r = 0;
+    if (javaPoint != null) {
+        this.x = javaPoint["x"];
+        this.y = javaPoint["y"];
+        this.r = javaPoint["r"];
+    }
+}
+
+PointEx.jsonToObject = function (res) {
+    if (res == null || res == "") {
+        return null;
+    }
+    res = JSON.parse(res);
+    if (res == null) {
+        return null;
+    }
+    return new PointEx(res);
+};
+
+
+PointEx.prototype.toJSONString = function () {
+    return JSON.stringify(this);
+};
+
 
 
 function RectEx(rectEx) {
